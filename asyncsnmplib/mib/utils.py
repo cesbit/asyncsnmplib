@@ -46,7 +46,12 @@ def on_syntax(syntax, value):
 
 def on_result(base_oid, result):
     base = MIB_INDEX[base_oid]
+    base_syntax = MIB_INDEX[base_oid]
     prefixlen = len(base_oid) + 1
+
+    if base_syntax['tp'] == 'OBJECT IDENTIFIER':
+        # filter out recursive "SEQUENCE" types
+        result = [res for res in result if res[0][prefixlen] == 0]
 
     table = {}
     for oid, value in result:
