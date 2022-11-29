@@ -30,7 +30,8 @@ MIB_TEXTUAL_CONVENTIONS = {
     },
 
     'HOST-RESOURCES-MIB': {
-        'InternationalDisplayString': {'tp': 'CUSTOM', 'func': 'DisplayString'},
+        'InternationalDisplayString': {
+            'tp': 'CUSTOM', 'func': 'DisplayString'},
     },
     'SNMP-FRAMEWORK-MIB': {
         'SnmpAdminString': {'tp': 'CUSTOM', 'func': 'DisplayString'},

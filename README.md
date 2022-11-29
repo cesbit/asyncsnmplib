@@ -1,2 +1,7 @@
-# asyncsnmplib
-Python Async SNMP Library
+# Python Async SNMP Library
+
+## Installation
+
+```
+pip install asyncsnmplib
+```
