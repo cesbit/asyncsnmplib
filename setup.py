@@ -16,7 +16,7 @@ except IOError:
 
 
 install_requires = [
-    'cryptography'
+    'pycryptodome'
 ]
 
 setup(
