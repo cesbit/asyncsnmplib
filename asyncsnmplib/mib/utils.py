@@ -46,12 +46,19 @@ def on_syntax(syntax, value):
 
 def on_result(base_oid, result):
     base = MIB_INDEX[base_oid]
-    base_syntax = MIB_INDEX[base_oid]
+    base_name = result_name = base['name']
     prefixlen = len(base_oid) + 1
 
-    if base_syntax['tp'] == 'OBJECT IDENTIFIER':
+    if base['tp'] == 'OBJECT IDENTIFIER':
         # filter out recursive "SEQUENCE" types
         result = [res for res in result if res[0][prefixlen] == 0]
+    elif base_name.endswith('XEntry'):
+        # for SEQUENCE types with AUGEMENTS clause remove suffix
+        base_name = base_name[:-6]
+        result_name = base_name[:-5]
+    elif base_name.endswith('Entry'):
+        # for SEQUENCE types remove suffix
+        base_name = result_name = base_name[:-5]
 
     table = {}
     for oid, value in result:
@@ -60,6 +67,9 @@ def on_result(base_oid, result):
         if prefix not in MIB_INDEX:
             continue
         name = MIB_INDEX[prefix]['name']
+        _, _, lastpart = name.partition(base_name)
+        name = lastpart or name
+
         syntax = MIB_INDEX[prefix]['syntax']
         if idx not in table:
             table[idx] = {'name': '.'.join(map(str, idx))}
@@ -69,4 +79,4 @@ def on_result(base_oid, result):
             raise Exception('Something went wrong in the metric processor:'
                             f' {e.__class__.__name__}: {e}')
 
-    return base['name'], list(table.values())
+    return result_name, list(table.values())
