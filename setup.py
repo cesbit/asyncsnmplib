@@ -15,6 +15,10 @@ except IOError:
     long_description = ''
 
 
+install_requires = [
+    'cryptography'
+]
+
 setup(
     name='asyncsnmplib',
     packages=find_packages(),
@@ -29,6 +33,7 @@ setup(
         'https://github.com/cesbit/'
         'asyncsnmplib/tarball/v{}'.format(version)),
     keywords=['snmp', 'async'],
+    install_requires=install_requires,
     classifiers=[
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
