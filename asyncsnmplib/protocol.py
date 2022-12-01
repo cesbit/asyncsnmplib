@@ -38,10 +38,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
     def connection_made(self, transport):
         self.transport = transport
 
-    def datagram_received(self, data, *args):
-        # if isinstance(data, bytes):
-        #     raise RuntimeError('data should be bytes.')
-
+    def datagram_received(self, data: bytes, *args):
         pkg = Package()
         try:
             pkg.decode(data)

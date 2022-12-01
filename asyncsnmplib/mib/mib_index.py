@@ -17,7 +17,6 @@ def read_mib(mibname):
 
     # custom TEXTUAL CONVENTIONS
     lk_definitions = MIB_TEXTUAL_CONVENTIONS.get(mibname, {})
-    # print(mibname, lk_definitions)
     on_mib(MIB_INDEX, mibname, mib, lk_definitions)
 
 
