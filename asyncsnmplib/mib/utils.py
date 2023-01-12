@@ -53,9 +53,9 @@ def on_result(base_oid, result):
         # filter out recursive "SEQUENCE" types
         result = [res for res in result if res[0][prefixlen] == 0]
     elif base_name.endswith('XEntry'):
-        # for SEQUENCE types with AUGEMENTS clause remove suffix
-        base_name = base_name[:-6]
+        # for SEQUENCE types with AUGMENTS clause remove suffix
         result_name = base_name[:-5]
+        base_name = base_name[:-6]
     elif base_name.endswith('Entry'):
         # for SEQUENCE types remove suffix
         base_name = result_name = base_name[:-5]
