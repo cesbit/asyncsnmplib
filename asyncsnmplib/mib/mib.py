@@ -6,7 +6,7 @@ class NoNameError(Exception):
     pass
 
 
-def on_mib(mi, mibname, mib, lk_definitions):
+def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
     lk = {
         0: (0, ),
         1: (1, ),
