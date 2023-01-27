@@ -2,11 +2,12 @@ import ipaddress
 import re
 import struct
 import time
+from typing import Optional
 
 ILLEGAL_CHARS = re.compile('\x00|\n|\r|\t')
 
 
-def PhysAddress(value):
+def PhysAddress(value: bytes) -> str:
     '''
     PhysAddress ::= TEXTUAL-CONVENTION
     DISPLAY-HINT "1x:"
@@ -18,7 +19,7 @@ def PhysAddress(value):
     return ':'.join(map('{:02x}'.format, value))
 
 
-def MacAddress(value):
+def MacAddress(value: bytes) -> str:
     '''
     MacAddress ::= TEXTUAL-CONVENTION
     DISPLAY-HINT "1x:"
@@ -34,7 +35,7 @@ def MacAddress(value):
     return ':'.join(map('{:02x}'.format, value))
 
 
-def DateAndTime(value):
+def DateAndTime(value: bytes) -> Optional[int]:
     '''
     DateAndTime ::= TEXTUAL-CONVENTION
         DISPLAY-HINT "2d-1d-1d,1d:1d:1d.1d,1a1d:1d"
@@ -77,7 +78,7 @@ def DateAndTime(value):
         return None
 
 
-def DisplayString(value):
+def DisplayString(value: bytes) -> str:
     '''
     DisplayString ::= TEXTUAL-CONVENTION
     DISPLAY-HINT "255a"
@@ -109,7 +110,7 @@ def DisplayString(value):
     return decoded.rstrip()
 
 
-def TruthValue(value):
+def TruthValue(value: int) -> bool:
     '''
     TruthValue ::= TEXTUAL-CONVENTION
     STATUS       current
@@ -120,7 +121,7 @@ def TruthValue(value):
     return value == 1
 
 
-def TimeTicks(value):
+def TimeTicks(value: int) -> Optional[int]:
     '''
     TimeTicks ::=
         [APPLICATION 3]
@@ -139,11 +140,11 @@ def TimeTicks(value):
         return None
 
 
-def IpAddress(octets):
+def IpAddress(octets: bytes) -> str:
     return '.'.join(map(str, octets))
 
 
-def Ipv6Address(octets):
+def Ipv6Address(octets: bytes) -> str:
     nr = sum(o * (2 ** ((16 - i - 1) * 8)) for i, o in enumerate(octets))
     return str(ipaddress.IPv6Address(nr))
 
