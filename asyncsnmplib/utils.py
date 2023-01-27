@@ -127,7 +127,7 @@ async def snmp_queries(
     else:
         results = {}
         for oid in queries:
-            result = await cl.walk(oid, False)
+            result = await cl.walk(oid)
             try:
                 name, parsed_result = on_result_base(oid, result)
             except Exception as e:

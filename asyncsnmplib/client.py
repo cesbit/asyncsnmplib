@@ -79,7 +79,7 @@ class Snmp:
         vbs = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid, recursive=True):
+    async def walk(self, oid):
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -91,7 +91,6 @@ class Snmp:
                 (oid_, value)
                 for oid_, tag, value in vbs
                 if oid_[:prefixlen] == oid and
-                (recursive or oid_[-1] == 0) and
                 value is not None
             ]
             rows.extend(new_rows)
@@ -116,7 +115,7 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid, recursive=True):
+    async def walk(self, oid):
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -131,7 +130,7 @@ class SnmpV1(Snmp):
             new_rows = [
                 (oid_, value)
                 for oid_, tag, value in vbs
-                if oid_[:prefixlen] == oid and (recursive or oid_[-1] == 0)
+                if oid_[:prefixlen] == oid
             ]
             rows.extend(new_rows)
 
