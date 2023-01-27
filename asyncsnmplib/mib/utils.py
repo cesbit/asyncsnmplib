@@ -45,8 +45,8 @@ def on_syntax(syntax: dict, value: Union[int, str]):
         raise Exception(f'Invalid syntax {syntax}')
 
 
-def on_result(base_oid: Tuple[int], result: dict) -> dict:
-    """returns a more compat resultname (w/o prefixes) and groups formatted 
+def on_result(base_oid: Tuple[int], result: dict) -> Tuple[str, list]:
+    """returns a more compat result (w/o prefixes) and groups formatted
     metrics by base_oid
     """
     base = MIB_INDEX[base_oid]
@@ -70,6 +70,9 @@ def on_result(base_oid: Tuple[int], result: dict) -> dict:
         prefix = oid[:prefixlen]
         if prefix not in MIB_INDEX:
             continue
+        tp = MIB_INDEX[prefix]['tp']
+        if tp != 'OBJECT-TYPE':
+            continue
         name = MIB_INDEX[prefix]['name']
         _, _, lastpart = name.partition(base_name)
         name = lastpart or name
@@ -86,10 +89,11 @@ def on_result(base_oid: Tuple[int], result: dict) -> dict:
     return result_name, list(table.values())
 
 
-def on_result_base(base_oid: Tuple[int], result: dict) -> dict:
+def on_result_base(base_oid: Tuple[int], result: dict) -> Tuple[str, list]:
     """returns formatted metrics grouped by base_oid
     """
     base = MIB_INDEX[base_oid]
+    result_name = base['name']
     prefixlen = len(base_oid) + 1
 
     if base['tp'] == 'OBJECT IDENTIFIER':
@@ -102,14 +106,17 @@ def on_result_base(base_oid: Tuple[int], result: dict) -> dict:
         prefix = oid[:prefixlen]
         if prefix not in MIB_INDEX:
             continue
+        tp = MIB_INDEX[prefix]['tp']
+        if tp != 'OBJECT-TYPE':
+            continue
         name = MIB_INDEX[prefix]['name']
         syntax = MIB_INDEX[prefix]['syntax']
         if idx not in table:
-            table[idx] = {}
+            table[idx] = {'name': '.'.join(map(str, idx))}
         try:
             table[idx][name] = on_syntax(syntax, value)
         except Exception as e:
             raise Exception('Something went wrong in the metric processor:'
                             f' {e.__class__.__name__}: {e}')
 
-    return table
+    return result_name, list(table.values())
