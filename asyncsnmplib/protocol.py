@@ -95,7 +95,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
         return fut.result()
 
     async def send(self, pkg):
-        for timeout in (5, 10, 20):
+        for timeout in (20, 10, 10):
             try:
                 res = await self._send(pkg, timeout)
             except exceptions.SnmpTimeoutError:

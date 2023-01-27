@@ -26,6 +26,8 @@ class Snmp:
         self.community = community
         self.max_rows = max_rows
 
+    # On some systems it seems to be required to set the remote_addr argument
+    # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
     async def connect(self, timeout=10):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
@@ -33,7 +35,7 @@ class Snmp:
             transport, protocol = await asyncio.wait_for(
                 self._loop.create_datagram_endpoint(
                     lambda: SnmpProtocol(addr),
-                    # remote_addr=(self.host, self.port),
+                    remote_addr=(self.host, self.port),
                     family=family),
                 timeout=timeout)
         except Exception:
@@ -188,6 +190,8 @@ class SnmpV3(Snmp):
                 raise Exception('Supply priv_passwd')
             self._priv_hash = self._auth_proto.hash_passphrase(priv_passwd)
 
+    # On some systems it seems to be required to set the remote_addr argument
+    # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
     async def connect(self, timeout=10):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
@@ -195,6 +199,7 @@ class SnmpV3(Snmp):
             transport, protocol = await asyncio.wait_for(
                 self._loop.create_datagram_endpoint(
                     lambda: SnmpV3Protocol(addr),
+                    remote_addr=(self.host, self.port),
                     family=family),
                 timeout=timeout)
         except Exception:

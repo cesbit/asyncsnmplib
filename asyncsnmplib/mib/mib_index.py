@@ -7,7 +7,7 @@ MIB_INDEX = {}
 MIB_JSON_FOLDER = 'mibs/parsed/'
 
 
-def read_mib(mibname):
+def read_mib(mibname: str):
     with open(os.path.join(MIB_JSON_FOLDER, mibname + '.json')) as f:
         mib = json.load(f)
 
