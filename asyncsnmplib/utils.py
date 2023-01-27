@@ -6,15 +6,19 @@ from .v3.auth import AUTH_PROTO
 from .v3.encr import PRIV_PROTO
 
 
-class MissingCredentialsException(Exception):
+class InvalidConfigException(Exception):
     pass
 
 
-class InvalidCredentialsException(Exception):
+class MissingCredentialsException(InvalidConfigException):
     pass
 
 
-class InvalidClientConfigException(Exception):
+class InvalidCredentialsException(InvalidConfigException):
+    pass
+
+
+class InvalidClientConfigException(InvalidConfigException):
     pass
 
 
