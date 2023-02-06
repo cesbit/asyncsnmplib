@@ -3,9 +3,19 @@ from .mib_index import MIB_INDEX
 from .syntax_funs import SYNTAX_FUNS
 
 
-ENUM_UNKNOWN = 'unknown'
+ENUM_UNKNOWN = None
 
 FLAGS_SEPERATOR = ','
+
+
+def on_octet_string(value: bytes) -> str:
+    """
+    used as a fallback for OCTET STRING when no formatter is found/defined
+    """
+    try:
+        return value.decode('utf-8')
+    except Exception:
+        return
 
 
 def on_oid_map(oid: Tuple[int]) -> str:
@@ -23,7 +33,7 @@ def on_value_map(value: int, map_: dict) -> str:
     return map_.get(value, ENUM_UNKNOWN)
 
 
-def on_value_map_b(value: str, map_: dict) -> str:
+def on_value_map_b(value: bytes, map_: dict) -> str:
     return FLAGS_SEPERATOR.join(
         v for k, v in map_.items() if value[k // 8] & (1 << k % 8))
 
@@ -32,7 +42,7 @@ def on_syntax(syntax: dict, value: Union[int, str]):
     if syntax['tp'] == 'CUSTOM':
         return SYNTAX_FUNS[syntax['func']](value)
     elif syntax['tp'] == 'OCTET STRING':
-        return value.decode('ascii', 'ignore')
+        return on_octet_string(value)
     elif syntax['tp'] == 'OBJECT IDENTIFIER':
         return on_oid_map(value)
     elif syntax['tp'] == 'BITS':
