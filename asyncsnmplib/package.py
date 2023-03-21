@@ -7,6 +7,12 @@ class Package:
     community = None
     pdu = None
 
+    def __init__(self):
+        self.request_id = None
+        self.error_status = None
+        self.error_index = None
+        self.variable_bindings = []
+
     def encode(self):
         encoder = Encoder()
 
@@ -26,22 +32,16 @@ class Package:
             decoder.read()  # community
 
             with decoder.enter():
-                _, request_id = decoder.read()
-                _, error_status = decoder.read()
-                _, error_index = decoder.read()
+                _, self.request_id = decoder.read()
+                _, self.error_status = decoder.read()
+                _, self.error_index = decoder.read()
 
                 with decoder.enter():
-                    variable_bindings = []
                     while not decoder.eof():
                         with decoder.enter():
                             _, oid = decoder.read()
                             tag, value = decoder.read()
-                            variable_bindings.append((oid, tag, value))
-
-        self.request_id = request_id
-        self.error_status = error_status
-        self.error_index = error_index
-        self.variable_bindings = variable_bindings
+                            self.variable_bindings.append((oid, tag, value))
 
 
 class SnmpMessage(Package):

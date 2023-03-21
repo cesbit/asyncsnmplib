@@ -43,7 +43,15 @@ class SnmpProtocol(asyncio.DatagramProtocol):
         try:
             pkg.decode(data)
         except Exception:
-            logging.error(self._log_with_suffix('Failed to decode package'))
+            # request_id is at the start of the pdu, when decode error occurs
+            # before request_id is known we cannot do anything and the query
+            # will time out
+            pid = pkg.request_id
+            if pid is not None:
+                self.requests[pid].set_exception(exceptions.SnmpDecodeError)
+            else:
+                logging.error(
+                    self._log_with_suffix('Failed to decode package'))
         else:
             pid = pkg.request_id
             if pid not in self.requests:
