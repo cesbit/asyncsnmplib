@@ -45,6 +45,10 @@ class SnmpTooMuchRows(SnmpException):
     message = "Too much rows."
 
 
+class SnmpDecodeError(SnmpException):
+    message = "Failed to decode SNMP response."
+
+
 class SnmpDecryptionError(SnmpException):
     message = "Failed to decrypt SNMP response."
 
