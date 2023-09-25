@@ -1,29 +1,29 @@
 import logging
 from .client import Snmp, SnmpV1, SnmpV3
-from .exceptions import SnmpNoConnection, SnmpNoAuthParams
+from .exceptions import SnmpException, SnmpNoConnection, SnmpNoAuthParams
 from .mib.utils import on_result_base
 from .v3.auth import AUTH_PROTO
 from .v3.encr import PRIV_PROTO
 
 
-class InvalidConfigException(Exception):
-    pass
+class MissingCredentialsException(SnmpException):
+    message = 'Missing SNMP credentials.'
 
 
-class MissingCredentialsException(InvalidConfigException):
-    pass
+class InvalidCredentialsException(SnmpException):
+    message = 'Invalid SNMP v3 credentials.'
 
 
-class InvalidCredentialsException(InvalidConfigException):
-    pass
+class InvalidClientConfigException(SnmpException):
+    message = 'Invalid SNMP v3 client configuration.'
 
 
-class InvalidClientConfigException(InvalidConfigException):
-    pass
+class InvalidSnmpVersionException(SnmpException):
+    message = 'Invalid SNMP version.'
 
 
-class ParseResultException(Exception):
-    pass
+class ParseResultException(SnmpException):
+    message = 'Failed to parse result.'
 
 
 def snmpv3_credentials(config: dict):
@@ -80,16 +80,13 @@ async def snmp_queries(
         queries: tuple):
 
     version = config.get('version', '2c')
-    community = config.get('community', 'public')
-    if not isinstance(community, str):
-        try:
-            community = community['secret']
-            assert isinstance(community, str)
-        except KeyError:
-            logging.warning(f'missing snmp credentials {address}')
-            raise MissingCredentialsException
 
     if version == '2c':
+        community = config.get('community', 'public')
+        if isinstance(community, dict):
+            community = community.get('secret')
+        if not isinstance(community, str):
+            raise TypeError('SNMP community must be a string.')
         cl = Snmp(
             host=address,
             community=community,
@@ -115,7 +112,7 @@ async def snmp_queries(
         )
     else:
         logging.warning(f'unsupported snmp version {address}: {version}')
-        raise InvalidClientConfigException
+        raise InvalidSnmpVersionException
 
     try:
         await cl.connect()
