@@ -19,7 +19,9 @@ class InvalidSnmpVersionException(SnmpException):
 
 
 class ParseResultException(SnmpException):
-    message = 'Failed to parse result.'
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 def snmpv3_credentials(config: dict):
@@ -117,10 +119,10 @@ async def snmp_queries(
 
     try:
         await cl.connect()
-    except SnmpNoConnection as e:
+    except SnmpNoConnection:
         raise
     except SnmpNoAuthParams:
-        logging.warning(f'unable to connect: failed to set auth params')
+        logging.warning('unable to connect: failed to set auth params')
         raise
     else:
         results = {}
