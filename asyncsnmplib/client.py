@@ -177,7 +177,7 @@ class SnmpV3(Snmp):
         try:
             self._priv_proto = PRIV_PROTO[priv_proto]
         except KeyError:
-            raise Exception('Supply valid auth_proto')
+            raise Exception('Supply valid priv_proto')
         if self._priv_proto and not self._auth_proto:
             raise Exception('Supply auth_proto')
         if self._auth_proto:

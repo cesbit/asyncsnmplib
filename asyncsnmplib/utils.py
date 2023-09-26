@@ -106,6 +106,11 @@ async def snmp_queries(
             logging.warning(f'invalid snmpv3 client config {address}: {e}')
             raise InvalidClientConfigException
     elif version == '1':
+        community = config.get('community', 'public')
+        if isinstance(community, dict):
+            community = community.get('secret')
+        if not isinstance(community, str):
+            raise TypeError('SNMP community must be a string.')
         cl = SnmpV1(
             host=address,
             community=community,
@@ -130,7 +135,7 @@ async def snmp_queries(
             except Exception as e:
                 msg = str(e) or type(e).__name__
                 raise ParseResultException(
-                    f'parse result error: {msg}')
+                    f'Failed to parse result. Exception: {msg}')
             else:
                 results[name] = parsed_result
         return results
