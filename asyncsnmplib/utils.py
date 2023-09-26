@@ -6,10 +6,6 @@ from .v3.auth import AUTH_PROTO
 from .v3.encr import PRIV_PROTO
 
 
-class MissingCredentialsException(SnmpException):
-    message = 'Missing SNMP credentials.'
-
-
 class InvalidCredentialsException(SnmpException):
     message = 'Invalid SNMP v3 credentials.'
 
