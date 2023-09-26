@@ -1,29 +1,27 @@
 import logging
 from .client import Snmp, SnmpV1, SnmpV3
-from .exceptions import SnmpNoConnection, SnmpNoAuthParams
+from .exceptions import SnmpException, SnmpNoConnection, SnmpNoAuthParams
 from .mib.utils import on_result_base
 from .v3.auth import AUTH_PROTO
 from .v3.encr import PRIV_PROTO
 
 
-class InvalidConfigException(Exception):
-    pass
+class InvalidCredentialsException(SnmpException):
+    message = 'Invalid SNMP v3 credentials.'
 
 
-class MissingCredentialsException(InvalidConfigException):
-    pass
+class InvalidClientConfigException(SnmpException):
+    message = 'Invalid SNMP v3 client configuration.'
 
 
-class InvalidCredentialsException(InvalidConfigException):
-    pass
+class InvalidSnmpVersionException(SnmpException):
+    message = 'Invalid SNMP version.'
 
 
-class InvalidClientConfigException(InvalidConfigException):
-    pass
-
-
-class ParseResultException(Exception):
-    pass
+class ParseResultException(SnmpException):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 def snmpv3_credentials(config: dict):
@@ -80,16 +78,13 @@ async def snmp_queries(
         queries: tuple):
 
     version = config.get('version', '2c')
-    community = config.get('community', 'public')
-    if not isinstance(community, str):
-        try:
-            community = community['secret']
-            assert isinstance(community, str)
-        except KeyError:
-            logging.warning(f'missing snmp credentials {address}')
-            raise MissingCredentialsException
 
     if version == '2c':
+        community = config.get('community', 'public')
+        if isinstance(community, dict):
+            community = community.get('secret')
+        if not isinstance(community, str):
+            raise TypeError('SNMP community must be a string.')
         cl = Snmp(
             host=address,
             community=community,
@@ -109,20 +104,25 @@ async def snmp_queries(
             logging.warning(f'invalid snmpv3 client config {address}: {e}')
             raise InvalidClientConfigException
     elif version == '1':
+        community = config.get('community', 'public')
+        if isinstance(community, dict):
+            community = community.get('secret')
+        if not isinstance(community, str):
+            raise TypeError('SNMP community must be a string.')
         cl = SnmpV1(
             host=address,
             community=community,
         )
     else:
         logging.warning(f'unsupported snmp version {address}: {version}')
-        raise InvalidClientConfigException
+        raise InvalidSnmpVersionException
 
     try:
         await cl.connect()
-    except SnmpNoConnection as e:
+    except SnmpNoConnection:
         raise
     except SnmpNoAuthParams:
-        logging.warning(f'unable to connect: failed to set auth params')
+        logging.warning('unable to connect: failed to set auth params')
         raise
     else:
         results = {}
@@ -133,7 +133,7 @@ async def snmp_queries(
             except Exception as e:
                 msg = str(e) or type(e).__name__
                 raise ParseResultException(
-                    f'parse result error: {msg}')
+                    f'Failed to parse result. Exception: {msg}')
             else:
                 results[name] = parsed_result
         return results
