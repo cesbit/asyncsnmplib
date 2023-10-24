@@ -18,6 +18,12 @@ def on_octet_string(value: bytes) -> str:
         return
 
 
+def on_integer(value: int) -> str:
+    if not isinstance(value, int):
+        return
+    return value
+
+
 def on_oid_map(oid: Tuple[int]) -> str:
     if not isinstance(oid, tuple):
         # some devices don't follow mib's syntax
@@ -26,6 +32,7 @@ def on_oid_map(oid: Tuple[int]) -> str:
         # possible solution is to take tag.nr into account while choosing
         # translation func
         return
+    # translation.name is always str
     return MIB_INDEX.get(oid, {}).get('name', '.'.join(map(str, oid)))
 
 
@@ -38,7 +45,10 @@ def on_value_map_b(value: bytes, map_: dict) -> str:
         v for k, v in map_.items() if value[k // 8] & (1 << k % 8))
 
 
-def on_syntax(syntax: dict, value: Union[int, str]):
+def on_syntax(syntax: dict, value: Union[int, str, bytes]):
+    """
+    this is point where bytes are converted to right datatype
+    """
     if syntax['tp'] == 'CUSTOM':
         return SYNTAX_FUNS[syntax['func']](value)
     elif syntax['tp'] == 'OCTET STRING':
@@ -50,7 +60,7 @@ def on_syntax(syntax: dict, value: Union[int, str]):
     elif syntax['tp'] == 'INTEGER' and syntax.get('values'):
         return on_value_map(value, syntax['values'])
     elif syntax['tp'] == 'INTEGER':
-        return value
+        return on_integer(value)
     else:
         raise Exception(f'Invalid syntax {syntax}')
 
