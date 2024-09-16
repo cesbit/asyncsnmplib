@@ -53,17 +53,22 @@ class SnmpTrapProtocol(SnmpProtocol):
             logging.error(
                 self._log_with_suffix('Failed to decode package'))
         else:
-            # print(pkg.variable_bindings)
-            # for oid, tag, value in pkg.variable_bindings:
-            #     print(oid, MIB_INDEX.get(oid[:-1])['name'])
-
-            for oid, tag, value in pkg.variable_bindings[1:]:
-                print(MIB_INDEX.get(oid[:-1])['name'], MIB_INDEX.get(value[:-1])['name'])
+            logging.debug('Trap message received')
+            for oid, tag, value in pkg.variable_bindings:
+                mib_object = MIB_INDEX.get(oid[:-1])
+                if mib_object is None:
+                    # only accept oids from loaded mibs
+                    continue
+                logging.info(
+                    f'oid: {oid} name: {mib_object["name"]} value: {value}'
+                )
+                # TODO some values need oid lookup for the value, do here or in
+                # outside processor
 
 
 class SnmpTrap:
-    def __init__(self, host='0.0.0.0', port=162, community='public', max_rows=10000):
-        self._loop = asyncio.get_event_loop()
+    def __init__(self, host='0.0.0.0', port=162, community='public', max_rows=10000, loop=None):
+        self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
         self.host = host
@@ -71,13 +76,16 @@ class SnmpTrap:
         self.community = community
         self.max_rows = max_rows
 
-    def start(self):
-        transport, protocol = self._loop.run_until_complete(
-            self._loop.create_datagram_endpoint(
-                lambda: SnmpTrapProtocol((None, None)),
-                local_addr=(self.host, self.port),
-            )
+    async def listen(self):
+        transport, protocol = await self._loop.create_datagram_endpoint(
+            lambda: SnmpTrapProtocol((None, None)),
+            local_addr=(self.host, self.port),
         )
         self._protocol = protocol
         self._transport = transport
-        self._loop.run_forever()
+
+    def close(self):
+        if self._transport is not None and not self._transport.is_closing():
+            self._transport.close()
+        self._protocol = None
+        self._transport = None

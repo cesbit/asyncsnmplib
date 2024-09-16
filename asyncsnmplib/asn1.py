@@ -60,6 +60,8 @@ class Class(enum.IntEnum):
 TNumber = Union[Number, int]
 TType = Union[Type, int]
 TClass = Union[Class, int]
+TOid = Tuple[int, ...]
+TValue = Any
 
 
 class Tag(NamedTuple):
@@ -546,7 +548,7 @@ class Decoder:
             raise Error("ASN1 syntax error")
 
     @staticmethod
-    def _decode_object_identifier(bytes_data: bytes) -> tuple:
+    def _decode_object_identifier(bytes_data: bytes) -> TOid:
         result: List[int] = []
         value: int = 0
         for i in range(len(bytes_data)):

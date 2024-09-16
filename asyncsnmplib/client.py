@@ -1,10 +1,12 @@
 import asyncio
+from typing import Iterable, Optional, Tuple, List
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
     SnmpTooMuchRows,
     SnmpNoAuthParams,
 )
+from .asn1 import Tag, TOid, TValue
 from .package import SnmpMessage
 from .pdu import SnmpGet, SnmpGetNext, SnmpGetBulk
 from .protocol import SnmpProtocol
@@ -17,8 +19,14 @@ from .v3.protocol import SnmpV3Protocol
 class Snmp:
     version = 1  # = v2
 
-    def __init__(self, host, port=161, community='public', max_rows=10000):
-        self._loop = asyncio.get_event_loop()
+    def __init__(
+            self,
+            host: str,
+            port: int = 161,
+            community: str = 'public',
+            max_rows: int = 10_000,
+            loop: Optional[asyncio.AbstractEventLoop] = None):
+        self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
         self.host = host
@@ -28,7 +36,7 @@ class Snmp:
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
-    async def connect(self, timeout=10):
+    async def connect(self, timeout: float = 10.0):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
             family, *_, addr = infos[0]
@@ -44,7 +52,7 @@ class Snmp:
         self._transport = transport
 
     def _get(self, oids, timeout=None):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGet(0, oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
@@ -54,32 +62,34 @@ class Snmp:
             return self._protocol.send(message)
 
     def _get_next(self, oids):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGetNext(0, oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
     def _get_bulk(self, oids):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGetBulk(0, oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
-    async def get(self, oid, timeout=None):
+    async def get(self, oid: TOid, timeout: Optional[float] = None
+                  ) -> Tuple[TOid, Tag, TValue]:
         vbs = await self._get([oid], timeout)
         return vbs[0]
 
-    async def get_next(self, oid):
+    async def get_next(self, oid: TOid) -> Tuple[TOid, Tag, TValue]:
         vbs = await self._get_next([oid])
         return vbs[0]
 
-    async def get_next_multi(self, oids):
+    async def get_next_multi(self, oids: Iterable[TOid]
+                             ) -> List[Tuple[TOid, TValue]]:
         vbs = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid):
+    async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -115,7 +125,7 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid):
+    async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -150,15 +160,16 @@ class SnmpV3(Snmp):
 
     def __init__(
             self,
-            host,
-            username,
-            auth_proto='USM_AUTH_NONE',
-            auth_passwd=None,
-            priv_proto='USM_PRIV_NONE',
-            priv_passwd=None,
-            port=161,
-            max_rows=10000):
-        self._loop = asyncio.get_event_loop()
+            host: str,
+            username: str,
+            auth_proto: str = 'USM_AUTH_NONE',
+            auth_passwd: Optional[str] = None,
+            priv_proto: str = 'USM_PRIV_NONE',
+            priv_passwd: Optional[str] = None,
+            port: int = 161,
+            max_rows: int = 10_000,
+            loop: Optional[asyncio.AbstractEventLoop] = None):
+        self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
         self.host = host
@@ -191,7 +202,7 @@ class SnmpV3(Snmp):
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
-    async def connect(self, timeout=10):
+    async def connect(self, timeout: float = 10.0):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
             family, *_, addr = infos[0]
@@ -211,6 +222,9 @@ class SnmpV3(Snmp):
             raise SnmpNoAuthParams
 
     async def _get_auth_params(self, timeout=10):
+        # TODO for long requests this will need to be refreshed
+        # https://datatracker.ietf.org/doc/html/rfc3414#section-2.2.3
+        assert self._protocol is not None
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
         # this request will not retry like the other requests
@@ -225,7 +239,7 @@ class SnmpV3(Snmp):
             if self._priv_proto else None
 
     def _get(self, oids, timeout=None):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
@@ -248,7 +262,7 @@ class SnmpV3(Snmp):
                 self._priv_hash_localized)
 
     def _get_next(self, oids):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
@@ -262,7 +276,7 @@ class SnmpV3(Snmp):
             self._priv_hash_localized)
 
     def _get_bulk(self, oids):
-        if self._transport is None:
+        if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams

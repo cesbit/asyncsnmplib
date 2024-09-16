@@ -66,10 +66,9 @@ def snmpv3_credentials(config: dict):
                     'auth_proto': auth_type,
                     'auth_passwd': auth_passwd,
                 }
-        else:
-            return {
-                'username': user_name,
-            }
+    return {
+        'username': user_name,
+    }
 
 
 async def snmp_queries(

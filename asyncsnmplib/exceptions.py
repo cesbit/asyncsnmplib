@@ -1,6 +1,5 @@
 __all__ = (
     "SnmpTimeoutError",
-    "SnmpUnsupportedValueType",
     "SnmpErrorTooBig",
     "SnmpErrorNoSuchName",
     "SnmpErrorBadValue",

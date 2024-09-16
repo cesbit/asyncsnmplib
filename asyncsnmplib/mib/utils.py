@@ -1,4 +1,5 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, List
+from ..asn1 import TOid, TValue
 from .mib_index import MIB_INDEX
 from .syntax_funs import SYNTAX_FUNS
 
@@ -8,7 +9,7 @@ ENUM_UNKNOWN = None
 FLAGS_SEPERATOR = ','
 
 
-def on_octet_string(value: bytes) -> str:
+def on_octet_string(value: TValue) -> Union[str, None]:
     """
     used as a fallback for OCTET STRING when no formatter is found/defined
     """
@@ -18,13 +19,13 @@ def on_octet_string(value: bytes) -> str:
         return
 
 
-def on_integer(value: int) -> str:
+def on_integer(value: TValue) -> Union[int, None]:
     if not isinstance(value, int):
         return
     return value
 
 
-def on_oid_map(oid: Tuple[int]) -> str:
+def on_oid_map(oid: TValue) -> Union[str, None]:
     if not isinstance(oid, tuple):
         # some devices don't follow mib's syntax
         # for example ipAddressTable.ipAddressPrefix returns an int in case of
@@ -45,7 +46,7 @@ def on_value_map_b(value: bytes, map_: dict) -> str:
         v for k, v in map_.items() if value[k // 8] & (1 << k % 8))
 
 
-def on_syntax(syntax: dict, value: Union[int, str, bytes]):
+def on_syntax(syntax: dict, value: TValue):
     """
     this is point where bytes are converted to right datatype
     """
@@ -65,7 +66,10 @@ def on_syntax(syntax: dict, value: Union[int, str, bytes]):
         raise Exception(f'Invalid syntax {syntax}')
 
 
-def on_result(base_oid: Tuple[int], result: dict) -> Tuple[str, list]:
+def on_result(
+    base_oid: TOid,
+    result: List[Tuple[TOid, TValue]],
+) -> Tuple[str, List[dict]]:
     """returns a more compat result (w/o prefixes) and groups formatted
     metrics by base_oid
     """
@@ -109,7 +113,10 @@ def on_result(base_oid: Tuple[int], result: dict) -> Tuple[str, list]:
     return result_name, list(table.values())
 
 
-def on_result_base(base_oid: Tuple[int], result: dict) -> Tuple[str, list]:
+def on_result_base(
+    base_oid: TOid,
+    result: List[Tuple[TOid, TValue]],
+) -> Tuple[str, List[dict]]:
     """returns formatted metrics grouped by base_oid
     """
     base = MIB_INDEX[base_oid]

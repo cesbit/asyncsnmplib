@@ -30,7 +30,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
     __slots__ = ('loop', 'target', 'transport', 'requests', '_request_id')
 
     def __init__(self, target):
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_running_loop()
         self.target = target
         self.requests = {}
         self._request_id = 0
@@ -47,8 +47,11 @@ class SnmpProtocol(asyncio.DatagramProtocol):
             # before request_id is known we cannot do anything and the query
             # will time out
             pid = pkg.request_id
-            if pid is not None:
+            if pid in self.requests:
                 self.requests[pid].set_exception(exceptions.SnmpDecodeError)
+            elif pid is not None:
+                logging.error(
+                    self._log_with_suffix(f'Unknown package pid {pid}'))
             else:
                 logging.error(
                     self._log_with_suffix('Failed to decode package'))
@@ -59,9 +62,9 @@ class SnmpProtocol(asyncio.DatagramProtocol):
                     self._log_with_suffix(f'Unknown package pid {pid}'))
             else:
                 exception = None
-                if pkg.error_status != 0:
+                if pkg.error_status:  # also exclude None for trap-pdu
                     oid = None
-                    if pkg.error_index != 0:
+                    if pkg.error_index:  # also exclude None for trap-pdu
                         oidtuple = \
                             pkg.variable_bindings[pkg.error_index - 1][0]
                         oid = '.'.join(map(str, oidtuple))
