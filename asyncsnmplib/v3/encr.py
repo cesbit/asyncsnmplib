@@ -3,6 +3,7 @@ from ..exceptions import SnmpDecryptionError
 from Crypto.Cipher import DES, AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
+from typing import Callable, Type, Dict
 
 
 def encrypt_data(key, data, msgsecurityparams):
@@ -73,12 +74,16 @@ def decrypt_data_aes(key, data, msgsecurityparams):
     return obj.decrypt(pad(data, 16))
 
 
-class USM_PRIV_CBC56_DES:
+class Priv:
+    encrypt: Callable
+
+
+class USM_PRIV_CBC56_DES(Priv):
     encrypt = encrypt_data
     decrypt = decrypt_data
 
 
-class USM_PRIV_CFB128_AES:
+class USM_PRIV_CFB128_AES(Priv):
     encrypt = encrypt_data_aes
     decrypt = decrypt_data_aes
 
@@ -86,5 +91,4 @@ class USM_PRIV_CFB128_AES:
 PRIV_PROTO = {
     'USM_PRIV_CBC56_DES': USM_PRIV_CBC56_DES,
     'USM_PRIV_CFB128_AES': USM_PRIV_CFB128_AES,
-    'USM_PRIV_NONE': None,
 }

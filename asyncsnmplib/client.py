@@ -1,5 +1,5 @@
 import asyncio
-from typing import Iterable, Optional, Tuple, List
+from typing import Iterable, Optional, Tuple, List, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
@@ -10,8 +10,8 @@ from .asn1 import Tag, TOid, TValue
 from .package import SnmpMessage
 from .pdu import SnmpGet, SnmpGetNext, SnmpGetBulk
 from .protocol import SnmpProtocol
-from .v3.auth import AUTH_PROTO
-from .v3.encr import PRIV_PROTO
+from .v3.auth import Auth
+from .v3.encr import Priv
 from .v3.package import SnmpV3Message
 from .v3.protocol import SnmpV3Protocol
 
@@ -162,10 +162,8 @@ class SnmpV3(Snmp):
             self,
             host: str,
             username: str,
-            auth_proto: str = 'USM_AUTH_NONE',
-            auth_passwd: Optional[str] = None,
-            priv_proto: str = 'USM_PRIV_NONE',
-            priv_passwd: Optional[str] = None,
+            auth: Optional[Tuple[Type[Auth], str]] = None,
+            priv: Optional[Tuple[Type[Priv], str]] = None,
             port: int = 161,
             max_rows: int = 10_000,
             loop: Optional[asyncio.AbstractEventLoop] = None):
@@ -181,24 +179,12 @@ class SnmpV3(Snmp):
         self._auth_hash_localized = None
         self._priv_hash = None
         self._priv_hash_localized = None
-        try:
-            self._auth_proto = AUTH_PROTO[auth_proto]
-        except KeyError:
-            raise Exception('Supply valid auth_proto')
-        try:
-            self._priv_proto = PRIV_PROTO[priv_proto]
-        except KeyError:
-            raise Exception('Supply valid priv_proto')
-        if self._priv_proto and not self._auth_proto:
-            raise Exception('Supply auth_proto')
-        if self._auth_proto:
-            if auth_passwd is None:
-                raise Exception('Supply auth_passwd')
+        if auth is not None:
+            self._auth_proto, auth_passwd = auth
             self._auth_hash = self._auth_proto.hash_passphrase(auth_passwd)
-        if self._priv_proto:
-            if priv_passwd is None:
-                raise Exception('Supply priv_passwd')
-            self._priv_hash = self._auth_proto.hash_passphrase(priv_passwd)
+            if priv is not None:
+                self._priv_proto, priv_passwd = priv
+                self._priv_hash = self._auth_proto.hash_passphrase(priv_passwd)
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint

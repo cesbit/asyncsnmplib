@@ -1,4 +1,6 @@
 import logging
+from typing import Dict, List, Tuple
+from .asn1 import TOid, TValue
 from .client import Snmp, SnmpV1, SnmpV3
 from .exceptions import SnmpException, SnmpNoConnection, SnmpNoAuthParams
 from .mib.utils import on_result_base
@@ -6,16 +8,10 @@ from .v3.auth import AUTH_PROTO
 from .v3.encr import PRIV_PROTO
 
 
-class InvalidCredentialsException(SnmpException):
-    message = 'Invalid SNMP v3 credentials.'
-
-
-class InvalidClientConfigException(SnmpException):
-    message = 'Invalid SNMP v3 client configuration.'
-
-
-class InvalidSnmpVersionException(SnmpException):
-    message = 'Invalid SNMP version.'
+class InvalidConfigException(SnmpException):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 class ParseResultException(SnmpException):
@@ -24,57 +20,10 @@ class ParseResultException(SnmpException):
         self.message = message
 
 
-def snmpv3_credentials(config: dict):
-    try:
-        user_name = config['username']
-    except KeyError:
-        raise Exception(f'missing `username`')
-
-    auth = config.get('auth')
-    if auth is not None:
-        auth_type = auth.get('type', 'USM_AUTH_NONE')
-        if auth_type != 'USM_AUTH_NONE':
-            if auth_type not in AUTH_PROTO:
-                raise Exception(f'invalid `auth.type`')
-
-            try:
-                auth_passwd = auth['password']
-            except KeyError:
-                raise Exception(f'missing `auth.password`')
-
-            priv = config.get('priv', {})
-            priv_type = priv.get('type', 'USM_PRIV_NONE')
-            if priv_type != 'USM_PRIV_NONE':
-                if priv_type not in PRIV_PROTO:
-                    raise Exception(f'invalid `priv.type`')
-
-                try:
-                    priv_passwd = priv['password']
-                except KeyError:
-                    raise Exception(f'missing `priv.password`')
-
-                return {
-                    'username': user_name,
-                    'auth_proto': auth_type,
-                    'auth_passwd': auth_passwd,
-                    'priv_proto': priv_type,
-                    'priv_passwd': priv_passwd,
-                }
-            else:
-                return {
-                    'username': user_name,
-                    'auth_proto': auth_type,
-                    'auth_passwd': auth_passwd,
-                }
-    return {
-        'username': user_name,
-    }
-
-
 async def snmp_queries(
         address: str,
         config: dict,
-        queries: tuple):
+        queries: Tuple[TOid, ...]) -> Dict[str, List[Tuple[TOid, TValue]]]:
 
     version = config.get('version', '2c')
 
@@ -83,38 +32,51 @@ async def snmp_queries(
         if isinstance(community, dict):
             community = community.get('secret')
         if not isinstance(community, str):
-            raise TypeError('SNMP community must be a string.')
+            raise InvalidConfigException('`community` must be a string.')
         cl = Snmp(
             host=address,
             community=community,
         )
     elif version == '3':
-        try:
-            cred = snmpv3_credentials(config)
-        except Exception as e:
-            logging.warning(f'invalid snmpv3 credentials {address}: {e}')
-            raise InvalidCredentialsException
-        try:
-            cl = SnmpV3(
-                host=address,
-                **cred,
-            )
-        except Exception as e:
-            logging.warning(f'invalid snmpv3 client config {address}: {e}')
-            raise InvalidClientConfigException
+        username = config.get('username')
+        if not isinstance(username, str):
+            raise InvalidConfigException('`username` must be a string.')
+        auth = config.get('auth')
+        if auth:
+            auth_proto = AUTH_PROTO.get(auth.get('type'))
+            auth_passwd = auth.get('password')
+            if auth_proto is None:
+                raise InvalidConfigException('`auth.type` invalid')
+            elif not isinstance(auth_passwd, str):
+                raise InvalidConfigException('`auth.password` must be string')
+            auth = (auth_proto, auth_passwd)
+        priv = auth and config.get('priv')
+        if priv:
+            priv_proto = PRIV_PROTO.get(priv.get('type'))
+            priv_passwd = priv.get('password')
+            if priv_proto is None:
+                raise InvalidConfigException('`priv.type` invalid')
+            elif not isinstance(priv_passwd, str):
+                raise InvalidConfigException('`priv.password` must be string')
+            priv = (priv, priv_passwd)
+        cl = SnmpV3(
+            host=address,
+            username=username,
+            auth=auth,
+            priv=priv,
+        )
     elif version == '1':
         community = config.get('community', 'public')
         if isinstance(community, dict):
             community = community.get('secret')
         if not isinstance(community, str):
-            raise TypeError('SNMP community must be a string.')
+            raise InvalidConfigException('`community` must be a string.')
         cl = SnmpV1(
             host=address,
             community=community,
         )
     else:
-        logging.warning(f'unsupported snmp version {address}: {version}')
-        raise InvalidSnmpVersionException
+        raise InvalidConfigException(f'unsupported snmp version {version}')
 
     try:
         await cl.connect()
