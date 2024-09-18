@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
-from asyncsnmplib.mib.mib_index import MIB_INDEX
+from .mib.mib_index import MIB_INDEX
 
 # TODOK
 # GENERIC_TRAP = {
