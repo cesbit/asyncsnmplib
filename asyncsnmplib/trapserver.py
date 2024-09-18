@@ -1,7 +1,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, Any
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
 from .mib.mib_index import MIB_INDEX
@@ -46,7 +46,11 @@ def on_package(data):
 
 class SnmpTrapProtocol(SnmpProtocol):
 
-    def datagram_received(self, data: bytes, *args):
+    def datagram_received(self, data: bytes, addr: Any):
+        # NOTE on typing
+        # https://docs.python.org/3/library/asyncio-protocol.html
+        # addr is the address of the peer sending the data;
+        # the exact format depends on the transport.
         pkg = Package()
         try:
             pkg.decode(data)
