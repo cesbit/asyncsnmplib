@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Any
 from . import exceptions
 from .package import Package
 
@@ -39,10 +38,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
     def connection_made(self, transport):
         self.transport = transport
 
-    def datagram_received(self, data: bytes, addr: Any):
-        # NOTE on typing
-        # addr is the address of the peer sending the data;
-        # the exact format depends on the transport.
+    def datagram_received(self, data: bytes, **kwargs):
         pkg = Package()
         try:
             pkg.decode(data)

@@ -7,7 +7,7 @@ from .package import Package
 
 class SnmpV3Protocol(SnmpProtocol):
 
-    def datagram_received(self, data, *args):
+    def datagram_received(self, data: bytes, **kwargs):
         pkg = Package()
         try:
             pkg.decode(data)
