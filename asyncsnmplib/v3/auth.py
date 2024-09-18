@@ -1,5 +1,6 @@
 import struct
 from hashlib import md5, sha1
+from typing import Callable, Type, Dict
 
 
 def hash_passphrase(passphrase, hash_func):
@@ -71,20 +72,25 @@ def authenticate_sha(auth_key, msg):
     return msg.replace(b'\x00' * 12, d2[:12], 1)
 
 
-class USM_AUTH_HMAC96_MD5:
+class Auth:
+    hash_passphrase: Callable
+    localize: Callable
+    auth: Callable
+
+
+class USM_AUTH_HMAC96_MD5(Auth):
     hash_passphrase = hash_passphrase_md5
     localize = localize_key_md5
     auth = authenticate_md5
 
 
-class USM_AUTH_HMAC96_SHA:
+class USM_AUTH_HMAC96_SHA(Auth):
     hash_passphrase = hash_passphrase_sha
     localize = localize_key_sha
     auth = authenticate_sha
 
 
-AUTH_PROTO = {
+AUTH_PROTO: Dict[str, Type[Auth]] = {
     'USM_AUTH_HMAC96_MD5': USM_AUTH_HMAC96_MD5,
     'USM_AUTH_HMAC96_SHA': USM_AUTH_HMAC96_SHA,
-    'USM_AUTH_NONE': None,
 }

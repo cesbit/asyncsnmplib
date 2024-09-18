@@ -66,6 +66,8 @@ def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
                     obj['syntax'] = obj['syntax']['syntax']
 
             lk_definitions[name] = obj
+        elif obj['tp'] == 'TRAP-TYPE':
+            lk_definitions[name] = obj
 
     for name, obj in mib.items():
         if 'value' in obj:
@@ -89,6 +91,8 @@ def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
             elif obj['tp'] == 'MODULE-IDENTITY':
                 names[name] = obj
             elif obj['tp'] == 'OBJECT-GROUP':
+                names[name] = obj
+            elif obj['tp'] == 'NOTIFICATION-TYPE':
                 names[name] = obj
 
     for name, obj in names.items():

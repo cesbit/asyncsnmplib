@@ -1,4 +1,5 @@
-from .asn1 import Decoder, Encoder, Number
+from typing import Optional, Tuple, List
+from .asn1 import Decoder, Encoder, Number, Tag, TOid, TValue
 
 
 class Package:
@@ -8,12 +9,13 @@ class Package:
     pdu = None
 
     def __init__(self):
-        self.request_id = None
-        self.error_status = None
-        self.error_index = None
-        self.variable_bindings = []
+        self.request_id: Optional[int] = None
+        self.error_status: Optional[int] = None
+        self.error_index: Optional[int] = None
+        self.variable_bindings: List[Tuple[TOid, Tag, TValue]] = []
 
     def encode(self):
+        assert self.pdu is not None
         encoder = Encoder()
 
         with encoder.enter(Number.Sequence):
