@@ -23,7 +23,7 @@ class ParseResultException(SnmpException):
 async def snmp_queries(
         address: str,
         config: dict,
-        queries: Tuple[TOid, ...]) -> Dict[str, List[Tuple[TOid, TValue]]]:
+        queries: Tuple[TOid, ...]) -> Dict[str, List[Dict[str, TValue]]]:
 
     version = config.get('version', '2c')
 
