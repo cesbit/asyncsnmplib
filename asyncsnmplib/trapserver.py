@@ -1,13 +1,15 @@
 
 import asyncio
 import logging
+from typing import Optional
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
 from asyncsnmplib.mib.mib_index import MIB_INDEX
 
 # TODOK
 # GENERIC_TRAP = {
-#     v['value']: {**v, 'name': k} for k, v in MIB_INDEX['RFC-1215'][None].items()
+#     v['value']: {**v, 'name': k}
+#     for k, v in MIB_INDEX['RFC-1215'][None].items()
 # }
 
 
@@ -67,7 +69,13 @@ class SnmpTrapProtocol(SnmpProtocol):
 
 
 class SnmpTrap:
-    def __init__(self, host='0.0.0.0', port=162, community='public', max_rows=10000, loop=None):
+    def __init__(
+            self,
+            host: str = '0.0.0.0',
+            port: int = 162,
+            community: str = 'public',
+            max_rows: int = 10_000,
+            loop: Optional[asyncio.AbstractEventLoop] = None):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
