@@ -76,6 +76,7 @@ def decrypt_data_aes(key, data, msgsecurityparams):
 
 class Priv:
     encrypt: Callable
+    decrypt: Callable
 
 
 class USM_PRIV_CBC56_DES(Priv):
