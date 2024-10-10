@@ -77,7 +77,11 @@ def on_result(
     base_name = result_name = base['name']
     prefixlen = len(base_oid) + 1
 
-    if base['tp'] == 'OBJECT IDENTIFIER':
+    # check if the type of the base oid is table or scalar object.
+    # scalar objects have (0, ) as index (oid suffix)
+    # in some mibs (i.e. SW-MIB) the assignments are done with the
+    # OBJECT-IDENTITY macro
+    if base['tp'] in ('OBJECT IDENTIFIER', 'OBJECT-IDENTITY'):
         # filter out recursive "SEQUENCE" types
         result = [res for res in result if res[0][prefixlen] == 0]
     elif base_name.endswith('XEntry'):
@@ -123,7 +127,11 @@ def on_result_base(
     result_name = base['name']
     prefixlen = len(base_oid) + 1
 
-    if base['tp'] == 'OBJECT IDENTIFIER':
+    # check if the type of the base oid is table or scalar object.
+    # scalar objects have (0, ) as index (oid suffix)
+    # in some mibs (i.e. SW-MIB) the assignments are done with the
+    # OBJECT-IDENTITY macro
+    if base['tp'] in ('OBJECT IDENTIFIER', 'OBJECT-IDENTITY'):
         # filter out recursive "SEQUENCE" types
         result = [res for res in result if res[0][prefixlen] == 0]
 
