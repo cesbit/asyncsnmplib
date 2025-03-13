@@ -58,7 +58,7 @@ async def snmp_queries(
                 raise InvalidConfigException('`priv.type` invalid')
             elif not isinstance(priv_passwd, str):
                 raise InvalidConfigException('`priv.password` must be string')
-            priv = (priv, priv_passwd)
+            priv = (priv_proto, priv_passwd)
         cl = SnmpV3(
             host=address,
             username=username,
