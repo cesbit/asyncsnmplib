@@ -3,6 +3,7 @@ from typing import Iterable, Optional, Tuple, List, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
+    SnmpTimeoutError,
     SnmpTooMuchRows,
     SnmpNoAuthParams,
 )
@@ -204,6 +205,8 @@ class SnmpV3(Snmp):
         self._transport = transport
         try:
             await self._get_auth_params()
+        except SnmpTimeoutError:
+            raise SnmpTimeoutError
         except Exception:
             raise SnmpNoAuthParams
 
@@ -211,17 +214,21 @@ class SnmpV3(Snmp):
         # TODO for long requests this will need to be refreshed
         # https://datatracker.ietf.org/doc/html/rfc3414#section-2.2.3
         assert self._protocol is not None
+
+        # retrieve engine_id, engine_boots and engine_time
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
         # this request will not retry like the other requests
         pkg = await self._protocol._send(message, timeout=timeout)
-        self._auth_params = \
-            pkg.msgsecurityparameters[:3] + [self._username, b'\x00' * 12, b'']
+        engine_id, engine_boots, engine_time, *_ = pkg.msgsecurityparameters
+
+        self._auth_params = [engine_id, engine_boots, engine_time,
+                             self._username, b'\x00' * 12, b'']
         self._auth_hash_localized = self._auth_proto.localize(
-            self._auth_hash, pkg.msgsecurityparameters[0]) \
+            self._auth_hash, engine_id) \
             if self._auth_proto else None
         self._priv_hash_localized = self._auth_proto.localize(
-            self._priv_hash, pkg.msgsecurityparameters[0]) \
+            self._priv_hash, engine_id) \
             if self._priv_proto else None
 
     def _get(self, oids, timeout=None):
