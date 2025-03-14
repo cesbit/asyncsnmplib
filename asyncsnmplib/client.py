@@ -241,7 +241,6 @@ class SnmpV3(Snmp):
         # move localize stuff to protocol?
         # cache localized connection args as every check will have overlap?
 
-
     async def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
