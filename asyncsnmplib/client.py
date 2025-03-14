@@ -218,6 +218,7 @@ class SnmpV3(Snmp):
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
         # this request will not retry like the other requests
+        # TODOK why not retry like other requests?
         pkg = await self._protocol._send(message, timeout=timeout)
         engine_id, engine_boots, engine_time, *_ = pkg.msgsecurityparameters
 
@@ -231,12 +232,19 @@ class SnmpV3(Snmp):
             self._priv_hash, engine_id) \
             if self._priv_proto else None
 
+        # TODOK
+        # move localize stuff to protocol?
+        # cache localized connection args as every check will have overlap?
+
+
     async def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
-        if self._loop.time() - self._auth_time > 150 - 40 - 1:
+        dur = 30 if timeout else 0
+        if self._loop.time() - self._auth_time > 150 - dur - 1:
+            # TODOK exception, and use protocol.send in _get_auth_params
             await self._get_auth_params()
         pdu = SnmpGet(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
@@ -261,7 +269,7 @@ class SnmpV3(Snmp):
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
-        if self._loop.time() - self._auth_time > 150 - 40 - 1:
+        if self._loop.time() - self._auth_time > 150 - 30 - 1:
             await self._get_auth_params()
         pdu = SnmpGetNext(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
@@ -277,7 +285,7 @@ class SnmpV3(Snmp):
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
-        if self._loop.time() - self._auth_time > 150 - 40 - 1:
+        if self._loop.time() - self._auth_time > 150 - 30 - 1:
             await self._get_auth_params()
         pdu = SnmpGetBulk(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
