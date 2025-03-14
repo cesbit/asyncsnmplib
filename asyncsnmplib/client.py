@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Iterable, Optional, Tuple, List, Type
 from .exceptions import (
     SnmpNoConnection,
@@ -217,20 +218,24 @@ class SnmpV3(Snmp):
         # retrieve engine_id, engine_boots and engine_time
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
-        # this request will not retry like the other requests
-        # TODOK why not retry like other requests?
-        pkg = await self._protocol._send(message, timeout=timeout)
-        engine_id, engine_boots, engine_time, *_ = pkg.msgsecurityparameters
+        pkg = await self._protocol.send(message, timeout=timeout)
 
-        self._auth_time = self._loop.time()
-        self._auth_params = [engine_id, engine_boots, engine_time,
-                             self._username, b'\x00' * 12, b'']
-        self._auth_hash_localized = self._auth_proto.localize(
-            self._auth_hash, engine_id) \
-            if self._auth_proto else None
-        self._priv_hash_localized = self._auth_proto.localize(
-            self._priv_hash, engine_id) \
-            if self._priv_proto else None
+        try:
+            engine_id, engine_boots, engine_time, *_ = \
+                pkg.msgsecurityparameters
+
+            self._auth_time = self._loop.time()
+            self._auth_params = [engine_id, engine_boots, engine_time,
+                                self._username, b'\x00' * 12, b'']
+            self._auth_hash_localized = self._auth_proto.localize(
+                self._auth_hash, engine_id) \
+                if self._auth_proto else None
+            self._priv_hash_localized = self._auth_proto.localize(
+                self._priv_hash, engine_id) \
+                if self._priv_proto else None
+        except Exception:
+            logging.exception('')
+            raise SnmpNoAuthParams
 
         # TODOK
         # move localize stuff to protocol?
