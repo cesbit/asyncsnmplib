@@ -1,8 +1,10 @@
 import asyncio
+import logging
 from typing import Iterable, Optional, Tuple, List, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
+    SnmpTimeoutError,
     SnmpTooMuchRows,
     SnmpNoAuthParams,
 )
@@ -173,6 +175,7 @@ class SnmpV3(Snmp):
         self.host = host
         self.port = port
         self.max_rows = max_rows
+        self._auth_time = None
         self._auth_params = None
         self._username = username
         self._auth_hash = None
@@ -204,35 +207,53 @@ class SnmpV3(Snmp):
         self._transport = transport
         try:
             await self._get_auth_params()
+        except SnmpTimeoutError:
+            raise SnmpTimeoutError
         except Exception:
             raise SnmpNoAuthParams
 
     async def _get_auth_params(self, timeout=10):
-        # TODO for long requests this will need to be refreshed
-        # https://datatracker.ietf.org/doc/html/rfc3414#section-2.2.3
         assert self._protocol is not None
+
+        # retrieve engine_id, engine_boots and engine_time
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
-        # this request will not retry like the other requests
-        pkg = await self._protocol._send(message, timeout=timeout)
-        self._auth_params = \
-            pkg.msgsecurityparameters[:3] + [self._username, b'\x00' * 12, b'']
-        self._auth_hash_localized = self._auth_proto.localize(
-            self._auth_hash, pkg.msgsecurityparameters[0]) \
-            if self._auth_proto else None
-        self._priv_hash_localized = self._auth_proto.localize(
-            self._priv_hash, pkg.msgsecurityparameters[0]) \
-            if self._priv_proto else None
+        pkg = await self._protocol.send(message, timeout=timeout)
 
-    def _get(self, oids, timeout=None):
+        try:
+            engine_id, engine_boots, engine_time, *_ = \
+                pkg.msgsecurityparameters
+
+            self._auth_time = self._loop.time()
+            self._auth_params = [engine_id, engine_boots, engine_time,
+                                self._username, b'\x00' * 12, b'']
+            self._auth_hash_localized = self._auth_proto.localize(
+                self._auth_hash, engine_id) \
+                if self._auth_proto else None
+            self._priv_hash_localized = self._auth_proto.localize(
+                self._priv_hash, engine_id) \
+                if self._priv_proto else None
+        except Exception:
+            logging.exception('')
+            raise SnmpNoAuthParams
+
+        # TODOK
+        # move localize stuff to protocol?
+        # cache localized connection args as every check will have overlap?
+
+    async def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
+        dur = 30 if timeout else 0
+        if self._loop.time() - self._auth_time > 150 - dur - 1:
+            # TODOK exception, and use protocol.send in _get_auth_params
+            await self._get_auth_params()
         pdu = SnmpGet(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
         if timeout:
-            return self._protocol._send_encrypted(
+            return await self._protocol._send_encrypted(
                 message,
                 self._auth_proto,
                 self._auth_hash_localized,
@@ -240,35 +261,39 @@ class SnmpV3(Snmp):
                 self._priv_hash_localized,
                 timeout=timeout)
         else:
-            return self._protocol.send_encrypted(
+            return await self._protocol.send_encrypted(
                 message,
                 self._auth_proto,
                 self._auth_hash_localized,
                 self._priv_proto,
                 self._priv_hash_localized)
 
-    def _get_next(self, oids):
+    async def _get_next(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
+        if self._loop.time() - self._auth_time > 150 - 30 - 1:
+            await self._get_auth_params()
         pdu = SnmpGetNext(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
-        return self._protocol.send_encrypted(
+        return await self._protocol.send_encrypted(
             message,
             self._auth_proto,
             self._auth_hash_localized,
             self._priv_proto,
             self._priv_hash_localized)
 
-    def _get_bulk(self, oids):
+    async def _get_bulk(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
+        if self._loop.time() - self._auth_time > 150 - 30 - 1:
+            await self._get_auth_params()
         pdu = SnmpGetBulk(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)
-        return self._protocol.send_encrypted(
+        return await self._protocol.send_encrypted(
             message,
             self._auth_proto,
             self._auth_hash_localized,
