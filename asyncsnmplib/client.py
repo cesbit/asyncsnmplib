@@ -178,8 +178,10 @@ class SnmpV3(Snmp):
         self._auth_time = None
         self._auth_params = None
         self._username = username
+        self._auth_proto = None
         self._auth_hash = None
         self._auth_hash_localized = None
+        self._priv_proto = None
         self._priv_hash = None
         self._priv_hash_localized = None
         if auth is not None:
@@ -218,7 +220,9 @@ class SnmpV3(Snmp):
         # retrieve engine_id, engine_boots and engine_time
         pdu = SnmpGet(0, [])
         message = SnmpV3Message.make(pdu, [b'', 0, 0, b'', b'', b''])
-        pkg = await self._protocol.send(message, timeout=timeout)
+
+        # raises exception when timeout
+        pkg = await self._protocol.send(message)
 
         try:
             engine_id, engine_boots, engine_time, *_ = \
