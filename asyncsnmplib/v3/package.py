@@ -139,7 +139,14 @@ class Package:
 
     def encode_auth(self, proto, key):
         encoded = self.encode()
-        return proto.auth(key, encoded)
+        auth_key = proto.auth(key, encoded)
+
+        # set auth_key
+        self.msgsecurityparameters[4] = auth_key
+
+        # encode again with the auth_key
+        encoded = self.encode()
+        return encoded
 
 
 class SnmpV3Message(Package):

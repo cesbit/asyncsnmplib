@@ -250,9 +250,8 @@ class SnmpV3(Snmp):
             raise SnmpNoConnection
         elif self._auth_params is None:
             raise SnmpNoAuthParams
-        dur = 30 if timeout else 0
+        dur = 0 if timeout else 30
         if self._loop.time() - self._auth_time > 150 - dur - 1:
-            # TODOK exception, and use protocol.send in _get_auth_params
             await self._get_auth_params()
         pdu = SnmpGet(0, oids)
         message = SnmpV3Message.make(pdu, self._auth_params)

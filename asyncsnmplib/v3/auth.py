@@ -56,7 +56,7 @@ def authenticate_md5(auth_key, msg):
     d1 = md5(k1 + msg).digest()
     d2 = md5(k2 + d1).digest()
 
-    return msg.replace(b'\x00' * 12, d2[:12], 1)
+    return d2[:12]
 
 
 # RFC3414: 7.3.1
@@ -69,7 +69,7 @@ def authenticate_sha(auth_key, msg):
     d1 = sha1(k1 + msg).digest()
     d2 = sha1(k2 + d1).digest()
 
-    return msg.replace(b'\x00' * 12, d2[:12], 1)
+    return d2[:12]
 
 
 class Auth:
