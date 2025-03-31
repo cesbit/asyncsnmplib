@@ -90,6 +90,7 @@ class Snmp:
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
     async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
+        is_scalar = None
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -112,6 +113,15 @@ class Snmp:
                 break
 
             next_oid = vbs[-1][0]
+
+            # check if we we are retrieving a scalar object
+            is_scalar = is_scalar or any(
+                oid_[prefixlen+1] == 0 for oid_, _ in new_rows)
+
+            # next oid should also be at the same level, otherwise skip to the
+            # next (asumed) sibling
+            if is_scalar and next_oid[prefixlen] != 0:
+                next_oid = (*oid[:prefixlen], next_oid[prefixlen] + 1)
 
         return rows
 
