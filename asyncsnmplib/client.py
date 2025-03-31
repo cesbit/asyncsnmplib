@@ -90,38 +90,31 @@ class Snmp:
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
     async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
-        is_scalar = None
         next_oid = oid
         prefixlen = len(oid)
         rows = []
 
         while True:
             vbs = await self._get_bulk([next_oid])
+            for next_oid, _, value in vbs:
+                if next_oid[:prefixlen] != oid or value is None:
+                    # we're done
+                    break
 
-            new_rows = [
-                (oid_, value)
-                for oid_, tag, value in vbs
-                if oid_[:prefixlen] == oid and
-                value is not None
-            ]
-            rows.extend(new_rows)
+                if next_oid[prefixlen + 1] == 0:
+                    # this is a row we want in the result, otherwise
+                    # we are in a table
+                    if len(rows) == self.max_rows:
+                        raise SnmpTooMuchRows
+                    rows.append((next_oid, value))
 
-            if len(rows) > self.max_rows:
-                raise SnmpTooMuchRows
-
-            if len(vbs) > len(new_rows):
-                break
-
-            next_oid = vbs[-1][0]
-
-            # check if we we are retrieving a scalar object
-            is_scalar = is_scalar or any(
-                oid_[prefixlen+1] == 0 for oid_, _ in new_rows)
-
-            # next oid should also be at the same level, otherwise skip to the
-            # next (asumed) sibling
-            if is_scalar and next_oid[prefixlen] != 0:
-                next_oid = (*oid[:prefixlen], next_oid[prefixlen] + 1)
+                continue
+            else:
+                # we might have more, check if we are in a table
+                if next_oid[prefixlen + 1] != 0:
+                    next_oid = (*oid, next_oid[prefixlen] + 1)
+                continue
+            break
 
         return rows
 
@@ -147,20 +140,25 @@ class SnmpV1(Snmp):
                 # snmp v1 uses error-status instead of end-of-mib exception
                 break
 
-            new_rows = [
-                (oid_, value)
-                for oid_, tag, value in vbs
-                if oid_[:prefixlen] == oid
-            ]
-            rows.extend(new_rows)
+            for next_oid, _, value in vbs:
+                if next_oid[:prefixlen] != oid:
+                    # we're done
+                    break
 
-            if len(rows) > self.max_rows:
-                raise SnmpTooMuchRows
+                if next_oid[prefixlen + 1] == 0:
+                    # this is a row we want in the result, otherwise
+                    # we are in a table
+                    if len(rows) == self.max_rows:
+                        raise SnmpTooMuchRows
+                    rows.append((next_oid, value))
 
-            if len(vbs) > len(new_rows):
-                break
-
-            next_oid = vbs[-1][0]
+                continue
+            else:
+                # we might have more, check if we are in a table
+                if next_oid[prefixlen + 1] != 0:
+                    next_oid = (*oid, next_oid[prefixlen] + 1)
+                continue
+            break
 
         return rows
 
