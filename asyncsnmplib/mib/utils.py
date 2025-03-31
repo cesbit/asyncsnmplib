@@ -37,7 +37,7 @@ def on_oid_map(oid: TValue) -> Union[str, None]:
     return MIB_INDEX.get(oid, {}).get('name', '.'.join(map(str, oid)))
 
 
-def on_value_map(value: int, map_: dict) -> str:
+def on_value_map(value: int, map_: dict) -> Union[str, None]:
     return map_.get(value, ENUM_UNKNOWN)
 
 
