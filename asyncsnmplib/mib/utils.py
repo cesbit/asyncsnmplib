@@ -37,7 +37,7 @@ def on_oid_map(oid: TValue) -> Union[str, None]:
     return MIB_INDEX.get(oid, {}).get('name', '.'.join(map(str, oid)))
 
 
-def on_value_map(value: int, map_: dict) -> str:
+def on_value_map(value: int, map_: dict) -> Union[str, None]:
     return map_.get(value, ENUM_UNKNOWN)
 
 
@@ -77,14 +77,7 @@ def on_result(
     base_name = result_name = base['name']
     prefixlen = len(base_oid) + 1
 
-    # check if the type of the base oid is table or scalar object.
-    # scalar objects have (0, ) as index (oid suffix)
-    # in some mibs (i.e. SW-MIB) the assignments are done with the
-    # OBJECT-IDENTITY macro
-    if base['tp'] in ('OBJECT IDENTIFIER', 'OBJECT-IDENTITY'):
-        # filter out recursive "SEQUENCE" types
-        result = [res for res in result if res[0][prefixlen] == 0]
-    elif base_name.endswith('XEntry'):
+    if base_name.endswith('XEntry'):
         # for SEQUENCE types with AUGMENTS clause remove suffix
         result_name = base_name[:-5]
         base_name = base_name[:-6]
@@ -126,14 +119,6 @@ def on_result_base(
     base = MIB_INDEX[base_oid]
     result_name = base['name']
     prefixlen = len(base_oid) + 1
-
-    # check if the type of the base oid is table or scalar object.
-    # scalar objects have (0, ) as index (oid suffix)
-    # in some mibs (i.e. SW-MIB) the assignments are done with the
-    # OBJECT-IDENTITY macro
-    if base['tp'] in ('OBJECT IDENTIFIER', 'OBJECT-IDENTITY'):
-        # filter out recursive "SEQUENCE" types
-        result = [res for res in result if res[0][prefixlen] == 0]
 
     table = {}
     for oid, value in result:

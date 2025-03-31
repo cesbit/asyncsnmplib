@@ -96,22 +96,25 @@ class Snmp:
 
         while True:
             vbs = await self._get_bulk([next_oid])
+            for next_oid, _, value in vbs:
+                if next_oid[:prefixlen] != oid or value is None:
+                    # we're done
+                    break
 
-            new_rows = [
-                (oid_, value)
-                for oid_, tag, value in vbs
-                if oid_[:prefixlen] == oid and
-                value is not None
-            ]
-            rows.extend(new_rows)
+                if next_oid[prefixlen + 1] == 0:
+                    # this is a row we want in the result, otherwise
+                    # we are in a table
+                    if len(rows) == self.max_rows:
+                        raise SnmpTooMuchRows
+                    rows.append((next_oid, value))
 
-            if len(rows) > self.max_rows:
-                raise SnmpTooMuchRows
-
-            if len(vbs) > len(new_rows):
-                break
-
-            next_oid = vbs[-1][0]
+                continue
+            else:
+                # we might have more, check if we are in a table
+                if next_oid[prefixlen + 1] != 0:
+                    next_oid = (*oid, next_oid[prefixlen] + 1)
+                continue
+            break
 
         return rows
 
@@ -137,20 +140,25 @@ class SnmpV1(Snmp):
                 # snmp v1 uses error-status instead of end-of-mib exception
                 break
 
-            new_rows = [
-                (oid_, value)
-                for oid_, tag, value in vbs
-                if oid_[:prefixlen] == oid
-            ]
-            rows.extend(new_rows)
+            for next_oid, _, value in vbs:
+                if next_oid[:prefixlen] != oid:
+                    # we're done
+                    break
 
-            if len(rows) > self.max_rows:
-                raise SnmpTooMuchRows
+                if next_oid[prefixlen + 1] == 0:
+                    # this is a row we want in the result, otherwise
+                    # we are in a table
+                    if len(rows) == self.max_rows:
+                        raise SnmpTooMuchRows
+                    rows.append((next_oid, value))
 
-            if len(vbs) > len(new_rows):
-                break
-
-            next_oid = vbs[-1][0]
+                continue
+            else:
+                # we might have more, check if we are in a table
+                if next_oid[prefixlen + 1] != 0:
+                    next_oid = (*oid, next_oid[prefixlen] + 1)
+                continue
+            break
 
         return rows
 
