@@ -242,14 +242,10 @@ class SnmpV3(Snmp):
                 if self._auth_proto else None
             self._priv_hash_localized = self._auth_proto.localize(
                 self._priv_hash, engine_id) \
-                if self._priv_proto else None
+                if self._auth_proto and self._priv_proto else None
         except Exception:
             logging.exception('')
             raise SnmpNoAuthParams
-
-        # TODOK
-        # move localize stuff to protocol?
-        # cache localized connection args as every check will have overlap?
 
     def _get(self, oids, timeout=None):
         if self._protocol is None:

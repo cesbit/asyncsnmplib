@@ -79,6 +79,7 @@ class Package:
     msgflags = None
     msgsecuritymodel = None
     msgsecurityparameters = None
+    msgdata = None
     pdu = None
 
     def encode(self):
@@ -140,12 +141,12 @@ class Package:
         self.msgdata = _decode_scopedpdu(decoder)
 
     def encode_auth(self, proto, key):
-        self.msgsecurityparameters[4] = b'\x00' * proto.sz
+        self.msgsecurityparameters[4] = b'\x00' * proto.sz  # type: ignore
         encoded = self.encode()
         auth_key = proto.auth(key, encoded)
 
         # set auth_key
-        self.msgsecurityparameters[4] = auth_key[:proto.sz]
+        self.msgsecurityparameters[4] = auth_key[:proto.sz]  # type: ignore
 
         # encode again with the auth_key
         encoded = self.encode()
