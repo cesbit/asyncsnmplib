@@ -5,8 +5,20 @@ from ..exceptions import SnmpTimeoutError
 from ..protocol import SnmpProtocol, _ERROR_STATUS_TO_EXCEPTION
 from .package import Package
 
+_RESPONSE_PDU_ID = 2
+_REPORT_PDU_ID = 8
+_REPORT_OID_EXCEPTIONS = {
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 1, 0): 'Unsupported securityLevel',
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0): 'Not in time window',
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 3, 0): 'Unknown user',
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 4, 0): 'Unknown snmpEngineID',
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 5, 0): 'Wrong digest value',
+    (1, 3, 6, 1, 6, 3, 15, 1, 1, 6, 0): 'Decryption error',
+}
+
 
 class SnmpV3Protocol(SnmpProtocol):
+    __slots__ = ('_params')
 
     def datagram_received(self, data: bytes, addr: Any):
         # NOTE on typing
@@ -24,7 +36,13 @@ class SnmpV3Protocol(SnmpProtocol):
                 logging.error(
                     self._log_with_suffix(f'Unknown package pid {pid}'))
             else:
+                # keep the connection params here as we need the updated
+                # engine_id, engine_time, engine_boots for further requests
+                self._params = pkg.msgsecurityparameters
                 self.requests[pid].set_result(pkg)
+
+    def get_params(self):
+        return self._params
 
     async def _send_encrypted(
             self, pkg, auth_proto, auth_key, priv_proto, priv_key, timeout=10):
@@ -62,11 +80,20 @@ class SnmpV3Protocol(SnmpProtocol):
             res.decrypt(priv_proto, priv_key)
 
         _, _, pdu = res.msgdata
-        _, error_status, error_index, vbs = pdu
+        pdu_id, _, error_status, error_index, vbs = pdu
+        if pdu_id == _REPORT_PDU_ID:
+            for oid, _, _ in vbs:
+                e = _REPORT_OID_EXCEPTIONS.get(oid)
+                if e:
+                    raise Exception(e)
+        if pdu_id != _RESPONSE_PDU_ID:
+            raise Exception('Expected a response pdu')
 
         if error_status != 0:
             oid = None
-            if error_index != 0:
+            if error_index != 0 and error_index < len(vbs):
+                # error_index can be equal to pdu.max_repetitions
+                # error_index starts at 1
                 oid = vbs[error_index - 1][0]
             exception = _ERROR_STATUS_TO_EXCEPTION[error_status](oid)
             raise exception
