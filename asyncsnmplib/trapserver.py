@@ -6,7 +6,10 @@ from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
 from .mib.mib_index import MIB_INDEX
 
-# TODOK
+# TODO  -- Traps
+#   This is an example for replacing value to usable data with an optional
+#   formatter
+#
 # GENERIC_TRAP = {
 #     v['value']: {**v, 'name': k}
 #     for k, v in MIB_INDEX['RFC-1215'][None].items()
@@ -54,10 +57,10 @@ class SnmpTrapProtocol(SnmpProtocol):
         pkg = Package()
         try:
             pkg.decode(data)
-        except Exception:
-            # TODO SnmpDecodeError?
+        except Exception as e:
+            msg = str(e) or type(e).__name__
             logging.error(
-                self._log_with_suffix('Failed to decode package'))
+                self._log_with_suffix(f'Failed to decode trap package: {msg}'))
         else:
             logging.debug('Trap message received')
             for oid, tag, value in pkg.variable_bindings:

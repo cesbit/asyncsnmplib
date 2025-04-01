@@ -13,6 +13,8 @@ def _decode_scopedpdu(decoder):
         _, contextengineid = decoder.read()
         _, contextname = decoder.read()
 
+        tag = decoder.peek()
+        pdu_id = tag.nr
         with decoder.enter():
             _, request_id = decoder.read()
             _, error_status = decoder.read()
@@ -29,6 +31,7 @@ def _decode_scopedpdu(decoder):
         contextengineid,
         contextname,
         [
+            pdu_id,
             request_id,
             error_status,
             error_index,
@@ -70,13 +73,13 @@ def _decode_msgsecurityparameters(data):
 
 class Package:
 
-    pdu_id = None
     request_id = None
     version = None
     msgmaxsize = None
     msgflags = None
     msgsecuritymodel = None
     msgsecurityparameters = None
+    msgdata = None
     pdu = None
 
     def encode(self):
@@ -138,8 +141,16 @@ class Package:
         self.msgdata = _decode_scopedpdu(decoder)
 
     def encode_auth(self, proto, key):
+        self.msgsecurityparameters[4] = b'\x00' * proto.sz  # type: ignore
         encoded = self.encode()
-        return proto.auth(key, encoded)
+        auth_key = proto.auth(key, encoded)
+
+        # set auth_key
+        self.msgsecurityparameters[4] = auth_key[:proto.sz]  # type: ignore
+
+        # encode again with the auth_key
+        encoded = self.encode()
+        return encoded
 
 
 class SnmpV3Message(Package):
