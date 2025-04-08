@@ -1,16 +1,7 @@
-from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObjectId, DerNull
+from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObjectId, DerObject, DerNull
 
 
-class VarBindList(list):
-    def encode(self):
-        s = DerSequence([
-            DerSequence([DerObjectId('.'.join(map(str, oid))), DerNull()])
-            for oid in self
-        ])
-        return s.encode()
-
-
-class PDU:
+class PDU(DerObject):
     pdu_id = None
 
     def __init__(
@@ -29,7 +20,10 @@ class PDU:
             self.request_id,
             self.error_status,
             self.error_index,
-            VarBindList(self.variable_bindings),
+            DerSequence([
+                DerSequence([DerObjectId('.'.join(map(str, oid))), DerNull()])
+                for oid in self.variable_bindings
+            ]),
         ], implicit=self.pdu_id)
         return s.encode()
 
@@ -85,6 +79,9 @@ class SnmpGetBulk(PDU):
             self.request_id,
             self.non_repeaters,
             self.max_repetitions,
-            VarBindList(self.variable_bindings),
+            DerSequence([
+                DerSequence([DerObjectId('.'.join(map(str, oid))), DerNull()])
+                for oid in self.variable_bindings
+            ]),
         ], implicit=self.pdu_id)
         return s.encode()
