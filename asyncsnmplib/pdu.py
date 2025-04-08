@@ -1,40 +1,69 @@
-from .asn1 import Class, Number
+from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObjectId, DerNull
+
+
+class VarBindList(list):
+    def encode(self):
+        s = DerSequence([
+            DerSequence([DerObjectId('.'.join(map(str, oid))), DerNull()])
+            for oid in self
+        ])
+        return s.encode()
 
 
 class PDU:
     pdu_id = None
-    request_id = None
-    non_repeaters = 0
-    max_repetitions = 0
-    variable_bindings = []
 
-    def encode(self, encoder):
-        with encoder.enter(self.pdu_id, Class.Context):
-            encoder.write(self.request_id, Number.Integer)
-            encoder.write(self.non_repeaters, Number.Integer)
-            encoder.write(self.max_repetitions, Number.Integer)
+    def __init__(
+            self,
+            request_id=0,
+            error_status=0,
+            error_index=0,
+            variable_bindings=[]):
+        self.request_id = request_id
+        self.error_status = error_status
+        self.error_index = error_index
+        self.variable_bindings = variable_bindings
 
-            with encoder.enter(Number.Sequence):
-                for oid in self.variable_bindings:
-                    with encoder.enter(Number.Sequence):
-                        encoder.write(oid, Number.ObjectIdentifier)
-                        encoder.write(None)
+    def encode(self):
+        s = DerSequence([
+            self.request_id,
+            self.error_status,
+            self.error_index,
+            VarBindList(self.variable_bindings),
+        ], implicit=self.pdu_id)
+        return s.encode()
+
+
+class ScopedPDU:
+    data: PDU
+    contextengineid: bytes = b''
+    contextname: bytes = b''
+
+    def __init__(
+        self,
+        data: PDU,
+        contextengineid: bytes = b'',
+        contextname: bytes = b'',
+    ):
+        self.data = data
+        self.contextengineid = contextengineid
+        self.contextname = contextname
+
+    def encode(self):
+        s = DerSequence([
+            DerOctetString(self.contextengineid),
+            DerOctetString(self.contextname),
+            self.data,
+        ])
+        return s.encode()
 
 
 class SnmpGet(PDU):
     pdu_id = 0
 
-    def __init__(self, request_id, variable_bindings):
-        self.request_id = request_id
-        self.variable_bindings = variable_bindings
-
 
 class SnmpGetNext(PDU):
     pdu_id = 1
-
-    def __init__(self, request_id, variable_bindings):
-        self.request_id = request_id
-        self.variable_bindings = variable_bindings
 
 
 class SnmpGetBulk(PDU):
@@ -42,11 +71,20 @@ class SnmpGetBulk(PDU):
 
     def __init__(
             self,
-            request_id,
-            variable_bindings,
+            request_id=0,
             non_repeaters=0,
-            max_repetitions=20):
+            max_repetitions=20,
+            variable_bindings=[]):
         self.request_id = request_id
         self.non_repeaters = non_repeaters
         self.max_repetitions = max_repetitions
         self.variable_bindings = variable_bindings
+
+    def encode(self):
+        s = DerSequence([
+            self.request_id,
+            self.non_repeaters,
+            self.max_repetitions,
+            VarBindList(self.variable_bindings),
+        ], implicit=self.pdu_id)
+        return s.encode()

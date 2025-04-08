@@ -1,11 +1,5 @@
-from ..asn1 import Decoder, Encoder, Number
-
-
-def _encode_scopedpdu(encoder, contextengineid, contextname, pdu):
-    with encoder.enter(Number.Sequence):
-        encoder.write(contextengineid, Number.OctetString)
-        encoder.write(contextname, Number.OctetString)
-        pdu.encode(encoder)
+from Crypto.Util.asn1 import DerSequence, DerOctetString
+from ..asn1 import Decoder
 
 
 def _decode_scopedpdu(decoder):
@@ -41,15 +35,15 @@ def _decode_scopedpdu(decoder):
 
 
 def _encode_msgsecurityparameters(orig):
-    encoder = Encoder()
-    with encoder.enter(Number.Sequence):
-        encoder.write(orig[0], Number.OctetString)
-        encoder.write(orig[1], Number.Integer)
-        encoder.write(orig[2], Number.Integer)
-        encoder.write(orig[3], Number.OctetString)
-        encoder.write(orig[4], Number.OctetString)
-        encoder.write(orig[5], Number.OctetString)
-    return encoder.output()
+    encoder = DerSequence([
+        DerOctetString(orig[0]),
+        orig[1],
+        orig[2],
+        DerOctetString(orig[3]),
+        DerOctetString(orig[4]),
+        DerOctetString(orig[5]),
+    ])
+    return encoder.encode()
 
 
 def _decode_msgsecurityparameters(data):
@@ -83,24 +77,19 @@ class Package:
     pdu = None
 
     def encode(self):
-        encoder = Encoder()
-        with encoder.enter(Number.Sequence):
-            encoder.write(self.version, Number.Integer)
-
-            with encoder.enter(Number.Sequence):
-                encoder.write(self.request_id, Number.Integer)
-                encoder.write(self.msgmaxsize, Number.Integer)
-                encoder.write(self.msgflags, Number.OctetString)
-                encoder.write(self.msgsecuritymodel, Number.Integer)
-
-            params = _encode_msgsecurityparameters(self.msgsecurityparameters)
-            encoder.write(params, Number.OctetString)
-            if self.msgflags == b'\x03':
-                encoder.write(self.msgdata, Number.OctetString)
-            else:
-                _encode_scopedpdu(encoder, b'', b'', self.pdu)
-
-        return encoder.output()
+        params = _encode_msgsecurityparameters(self.msgsecurityparameters)
+        encoder = DerSequence([
+            self.version,
+            DerSequence([
+                self.request_id,
+                self.msgmaxsize,
+                DerOctetString(self.msgflags),
+                self.msgsecuritymodel,
+            ]),
+            DerOctetString(params),
+            self.pdu
+        ])
+        return encoder.encode()
 
     def decode(self, data):
         decoder = Decoder(data)
@@ -130,10 +119,9 @@ class Package:
         self.msgdata = msgdata
 
     def encrypt(self, proto, key):
-        encoder_2 = Encoder()
-        _encode_scopedpdu(encoder_2, b'', b'', self.pdu)
-        encoded = encoder_2.output()
-        self.msgdata = proto.encrypt(key, encoded, self.msgsecurityparameters)
+        encoded = self.pdu.encode()
+        encryped = proto.encrypt(key, encoded, self.msgsecurityparameters)
+        self.pdu = DerOctetString(encryped)
 
     def decrypt(self, proto, key):
         pdu = proto.decrypt(key, self.msgdata, self.msgsecurityparameters)
