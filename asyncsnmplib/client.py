@@ -10,7 +10,7 @@ from .exceptions import (
 )
 from .asn1 import Tag, TOid, TValue
 from .package import SnmpMessage
-from .pdu import SnmpGet, SnmpGetNext, SnmpGetBulk
+from .pdu import SnmpGet, SnmpGetNext, SnmpGetBulk, ScopedPDU
 from .protocol import SnmpProtocol
 from .v3.auth import Auth
 from .v3.encr import Priv
@@ -33,7 +33,7 @@ class Snmp:
         self._transport = None
         self.host = host
         self.port = port
-        self.community = community
+        self.community = community.encode()
         self.max_rows = max_rows
 
     # On some systems it seems to be required to set the remote_addr argument
@@ -56,7 +56,7 @@ class Snmp:
     def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
-        pdu = SnmpGet(0, oids)
+        pdu = SnmpGet(variable_bindings=oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         if timeout:
             return self._protocol._send(message, timeout)
@@ -66,14 +66,14 @@ class Snmp:
     def _get_next(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
-        pdu = SnmpGetNext(0, oids)
+        pdu = SnmpGetNext(variable_bindings=oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
     def _get_bulk(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
-        pdu = SnmpGetBulk(0, oids)
+        pdu = SnmpGetBulk(variable_bindings=oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
@@ -184,7 +184,7 @@ class SnmpV3(Snmp):
         self.port = port
         self.max_rows = max_rows
         self._auth_params = None
-        self._username = username
+        self._username = username.encode()
         self._auth_proto = None
         self._auth_hash = None
         self._auth_hash_localized = None
@@ -225,9 +225,10 @@ class SnmpV3(Snmp):
         assert self._protocol is not None
 
         # retrieve engine_id
-        pdu = SnmpGet(0, [])
+        pdu = SnmpGet(0, variable_bindings=[])
+        spdu = ScopedPDU(pdu)
         params = (b'', 0, 0, b'', b'', b'')
-        message = SnmpV3Message.make(pdu, params)
+        message = SnmpV3Message.make(spdu, params)
 
         # raises exception when timeout
         await self._protocol.send(message)
@@ -253,9 +254,10 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         if params is None:
             raise SnmpNoAuthParams
-        pdu = SnmpGet(0, oids)
+        pdu = SnmpGet(variable_bindings=oids)
+        spdu = ScopedPDU(pdu)
         params = [*params[:3], self._username, b'', b'']
-        message = SnmpV3Message.make(pdu, params)
+        message = SnmpV3Message.make(spdu, params)
         if timeout:
             return self._protocol._send_encrypted(
                 message,
@@ -278,9 +280,10 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         if params is None:
             raise SnmpNoAuthParams
-        pdu = SnmpGetNext(0, oids)
+        pdu = SnmpGetNext(variable_bindings=oids)
+        spdu = ScopedPDU(pdu)
         params = [*params[:3], self._username, b'', b'']
-        message = SnmpV3Message.make(pdu, params)
+        message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(
             message,
             self._auth_proto,
@@ -294,9 +297,10 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         if params is None:
             raise SnmpNoAuthParams
-        pdu = SnmpGetBulk(0, oids)
+        pdu = SnmpGetBulk(variable_bindings=oids)
+        spdu = ScopedPDU(pdu)
         params = [*params[:3], self._username, b'', b'']
-        message = SnmpV3Message.make(pdu, params)
+        message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(
             message,
             self._auth_proto,

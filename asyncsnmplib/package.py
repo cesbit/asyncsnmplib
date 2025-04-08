@@ -1,5 +1,6 @@
+from Crypto.Util.asn1 import DerSequence, DerOctetString
 from typing import Optional, Tuple, List
-from .asn1 import Decoder, Encoder, Number, Tag, TOid, TValue
+from .asn1 import Decoder, Tag, TOid, TValue
 
 
 class Package:
@@ -16,16 +17,14 @@ class Package:
 
     def encode(self):
         assert self.pdu is not None
-        encoder = Encoder()
+        self.pdu.request_id = self.request_id
 
-        with encoder.enter(Number.Sequence):
-            encoder.write(self.version, Number.Integer)
-            encoder.write(self.community, Number.OctetString)
-
-            self.pdu.request_id = self.request_id
-            self.pdu.encode(encoder)
-
-        return encoder.output()
+        encoder = DerSequence([
+            self.version,
+            DerOctetString(self.community),
+            self.pdu
+        ])
+        return encoder.encode()
 
     def decode(self, data):
         decoder = Decoder(data)
