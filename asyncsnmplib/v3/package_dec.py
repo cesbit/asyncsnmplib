@@ -59,7 +59,8 @@ class Decoder(Package):
         version, msgglobaldata, msgsecurityparameters, msgdata = s.decode(data)
 
         s1 = DerSequence()
-        msgid, msgmaxsize, msgflags, msgsecuritymodel = s1.decode(msgglobaldata)
+        msgid, msgmaxsize, msgflags, msgsecuritymodel = \
+            s1.decode(msgglobaldata)
 
         self.request_id = msgid
         self.version = version
