@@ -91,7 +91,8 @@ class Snmp:
         vbs = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
+    async def walk(self, oid: TOid, is_table=False
+                   ) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -103,7 +104,7 @@ class Snmp:
                     # we're done
                     break
 
-                if next_oid[prefixlen + 1] == 0:
+                if is_table or next_oid[prefixlen + 1] == 0:
                     # this is a row we want in the result, otherwise
                     # we are in a table
                     if len(rows) == self.max_rows:
@@ -130,7 +131,8 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid: TOid) -> List[Tuple[TOid, TValue]]:
+    async def walk(self, oid: TOid, is_table=False
+                   ) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -147,7 +149,7 @@ class SnmpV1(Snmp):
                     # we're done
                     break
 
-                if next_oid[prefixlen + 1] == 0:
+                if is_table or next_oid[prefixlen + 1] == 0:
                     # this is a row we want in the result, otherwise
                     # we are in a table
                     if len(rows) == self.max_rows:
