@@ -1,4 +1,5 @@
-from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObjectId, DerObject, DerNull
+from Crypto.Util.asn1 import (
+    DerSequence, DerOctetString, DerObjectId, DerObject, DerNull)
 
 
 class PDU(DerObject):
