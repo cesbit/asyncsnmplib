@@ -114,7 +114,7 @@ class Snmp:
                 continue
             else:
                 # we might have more, check if we are in a table
-                if next_oid[prefixlen + 1] != 0:
+                if not is_table and next_oid[prefixlen + 1] != 0:
                     next_oid = (*oid, next_oid[prefixlen] + 1)
                 continue
             break
@@ -159,7 +159,7 @@ class SnmpV1(Snmp):
                 continue
             else:
                 # we might have more, check if we are in a table
-                if next_oid[prefixlen + 1] != 0:
+                if not is_table and next_oid[prefixlen + 1] != 0:
                     next_oid = (*oid, next_oid[prefixlen] + 1)
                 continue
             break
