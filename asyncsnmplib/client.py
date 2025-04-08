@@ -91,7 +91,7 @@ class Snmp:
         vbs = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid: TOid, is_table=False
+    async def walk(self, oid: TOid, is_table: bool,
                    ) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
@@ -131,7 +131,7 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid: TOid, is_table=False
+    async def walk(self, oid: TOid, is_table: bool,
                    ) -> List[Tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
