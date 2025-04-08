@@ -1,5 +1,6 @@
+# type: ignore
 from Crypto.Util.asn1 import DerSequence, DerObjectId
-from .package import Package
+# from .package import Package
 
 
 def _decode_scopedpdu(data):
@@ -53,7 +54,7 @@ def _decode_msgsecurityparameters(data):
     ]
 
 
-class Decoder(Package):
+class Decoder:
     def decode(self, data):
         s = DerSequence()
         version, msgglobaldata, msgsecurityparameters, msgdata = s.decode(data)

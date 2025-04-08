@@ -1,4 +1,4 @@
-from Crypto.Util.asn1 import DerSequence, DerOctetString
+from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObject
 from ..asn1 import Decoder
 
 
@@ -67,14 +67,14 @@ def _decode_msgsecurityparameters(data):
 
 class Package:
 
-    request_id = None
-    version = None
-    msgmaxsize = None
-    msgflags = None
-    msgsecuritymodel = None
-    msgsecurityparameters = None
-    msgdata = None
-    pdu = None
+    request_id: int
+    version: int
+    msgmaxsize: int
+    msgflags: bytes
+    msgsecuritymodel: int
+    msgsecurityparameters: list
+    msgdata: list
+    pdu: DerObject
 
     def encode(self):
         params = _encode_msgsecurityparameters(self.msgsecurityparameters)
