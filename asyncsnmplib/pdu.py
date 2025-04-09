@@ -1,9 +1,12 @@
 import logging
+import os
 from Crypto.Util.asn1 import (
     DerSequence, DerOctetString, DerObjectId, DerObject, DerNull, DerInteger,
     DerBoolean)
 from typing import Any
 from .asn1 import Number
+
+MAX_CHARS_PKG = None if os.getenv('LOG_LEVEL', '').lower() == 'DEBUG' else 80
 
 
 class PDU:
@@ -42,9 +45,10 @@ class PDU:
         try:
             s: Any = DerSequence(implicit=pdu_id).decode(der_encoded)
             request_id, error_status, error_index, vbs = s
-        except Exception:
-            vbsstr = der_encoded.hex(' ')
-            logging.warning(f'Failed to parse PDU {vbsstr}'[:80])
+        except Exception as e:
+            msg = str(e) or type(e).__name__
+            vbsstr = der_encoded.hex(' ')[:MAX_CHARS_PKG]
+            logging.warning(f'Failed to parse PDU: {msg} {vbsstr}')
             raise
 
         self.pdu_id = pdu_id
@@ -58,9 +62,10 @@ class PDU:
 
         try:
             s: Any = DerSequence().decode(vbs)
-        except Exception:
-            vbsstr = vbs.hex(' ')
-            logging.warning(f'Failed to parse VarBindList {vbsstr}'[:80])
+        except Exception as e:
+            msg = str(e) or type(e).__name__
+            vbsstr = vbs.hex(' ')[:MAX_CHARS_PKG]
+            logging.warning(f'Failed to parse VarBindList: {msg} {vbsstr}')
             raise
         for vb in s:
             try:
@@ -68,9 +73,10 @@ class PDU:
                 oid, v = s.decode(vb)
                 oid = DerObjectId().decode(oid)
                 oid = tuple(map(int, oid.value.split('.')))
-            except Exception:
-                vbstr = vb.hex(' ')
-                logging.warning(f'Failed to parse VarBind {vbstr}'[:80])
+            except Exception as e:
+                msg = str(e) or type(e).__name__
+                vbsstr = vb.hex(' ')[:MAX_CHARS_PKG]
+                logging.warning(f'Failed to parse VarBind: {msg} {vbsstr}')
                 raise
             if isinstance(v, int):
                 # DER INTEGERs are already decoded
@@ -104,9 +110,10 @@ class PDU:
                     v = None
                 else:
                     v = o.payload
-            except Exception:
-                vbstr = v.hex(' ')
-                logging.warning(f'Failed to parse Value {vbstr}'[:80])
+            except Exception as e:
+                msg = str(e) or type(e).__name__
+                vbsstr = v.hex(' ')[:MAX_CHARS_PKG]
+                logging.warning(f'Failed to parse Value: {msg} {vbsstr}')
                 raise
             variable_bindings.append((oid, tag_octet, v))
 
