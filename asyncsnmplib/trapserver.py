@@ -3,7 +3,6 @@ import asyncio
 import logging
 from typing import Optional, Any
 from .protocol import SnmpProtocol, Package
-from .asn1 import Decoder
 from .mib.mib_index import MIB_INDEX
 
 # TODO  -- Traps
@@ -14,37 +13,6 @@ from .mib.mib_index import MIB_INDEX
 #     v['value']: {**v, 'name': k}
 #     for k, v in MIB_INDEX['RFC-1215'][None].items()
 # }
-
-
-def on_package(data):
-    decoder = Decoder(data)
-    with decoder.enter():
-        decoder.read()  # version
-        decoder.read()  # community
-
-        with decoder.enter():
-            tag, value = decoder.read()
-            # print(value)
-            tag, value = decoder.read()
-            # print(value)
-            tag, value = decoder.read()
-            generic_trap_id = value
-            # print(value)
-            tag, value = decoder.read()
-            # print(value)
-            tag, value = decoder.read()
-            # print(value)
-
-            variable_bindings = []
-            with decoder.enter():
-                while not decoder.eof():
-                    with decoder.enter():
-                        _, oid = decoder.read()
-                        tag, value = decoder.read()
-                        variable_bindings.append((oid, tag, value))
-
-            # print(GENERIC_TRAP[generic_trap_id])
-            print(variable_bindings)
 
 
 class SnmpTrapProtocol(SnmpProtocol):

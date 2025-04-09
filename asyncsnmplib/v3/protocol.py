@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from typing import Any
-from ..exceptions import SnmpTimeoutError
+from ..exceptions import SnmpTimeoutError, SnmpDecodeError
 from ..protocol import SnmpProtocol, _ERROR_STATUS_TO_EXCEPTION
-from .package import Package
+from .package_dec import Package
 
 _RESPONSE_PDU_ID = 2
 _REPORT_PDU_ID = 8
@@ -29,7 +29,18 @@ class SnmpV3Protocol(SnmpProtocol):
         try:
             pkg.decode(data)
         except Exception:
-            logging.error(self._log_with_suffix('Failed to decode package'))
+            # request_id is at the start of the pdu, when decode error occurs
+            # before request_id is known we cannot do anything and the query
+            # will time out
+            pid = pkg.request_id
+            if pid in self.requests:
+                self.requests[pid].set_exception(SnmpDecodeError)
+            elif pid is not None:
+                logging.error(
+                    self._log_with_suffix(f'Unknown package pid {pid}'))
+            else:
+                logging.error(
+                    self._log_with_suffix('Failed to decode package'))
         else:
             pid = pkg.request_id
             if pid not in self.requests:

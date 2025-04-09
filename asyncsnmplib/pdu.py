@@ -1,8 +1,12 @@
+import logging
 from Crypto.Util.asn1 import (
-    DerSequence, DerOctetString, DerObjectId, DerObject, DerNull)
+    DerSequence, DerOctetString, DerObjectId, DerObject, DerNull, DerInteger,
+    DerBoolean)
+from typing import Any
+from .asn1 import Number
 
 
-class PDU(DerObject):
+class PDU:
     pdu_id = None
 
     def __init__(
@@ -22,11 +26,89 @@ class PDU(DerObject):
             self.error_status,
             self.error_index,
             DerSequence([
-                DerSequence([DerObjectId('.'.join(map(str, oid))), DerNull()])
+                DerSequence([
+                    DerObjectId('.'.join(map(str, oid))),
+                    DerNull()
+                ])
                 for oid in self.variable_bindings
             ]),
         ], implicit=self.pdu_id)
         return s.encode()
+
+    def decode(self, der_encoded):
+        tag_octet = der_encoded[0]
+        pdu_id = tag_octet - 0xA0
+
+        try:
+            s: Any = DerSequence(implicit=pdu_id).decode(der_encoded)
+            request_id, error_status, error_index, vbs = s
+        except Exception:
+            vbsstr = der_encoded.hex(' ')
+            logging.warning(f'Failed to parse PDU {vbsstr}'[:80])
+            raise
+
+        self.pdu_id = pdu_id
+        # it is important to set request_id early so that that the
+        # future/handle can be found to set the exception which happen
+        # after this
+        self.request_id = request_id
+        self.error_status = error_status
+        self.error_index = error_index
+        self.variable_bindings = variable_bindings = []
+
+        try:
+            s: Any = DerSequence().decode(vbs)
+        except Exception:
+            vbsstr = vbs.hex(' ')
+            logging.warning(f'Failed to parse VarBindList {vbsstr}'[:80])
+            raise
+        for vb in s:
+            try:
+                s = DerSequence()
+                oid, v = s.decode(vb)
+                oid = DerObjectId().decode(oid)
+                oid = tuple(map(int, oid.value.split('.')))
+            except Exception:
+                vbstr = vb.hex(' ')
+                logging.warning(f'Failed to parse VarBind {vbstr}'[:80])
+                raise
+            if isinstance(v, int):
+                # DER INTEGERs are already decoded
+                tag_octet = Number.Integer
+                variable_bindings.append((oid, tag_octet, v))
+                continue
+            try:
+                o: Any = DerObject().decode(v)
+                tag_octet = o._tag_octet
+                if tag_octet == Number.Boolean:
+                    v = DerBoolean().decode(v).value
+                elif tag_octet == Number.ObjectIdentifier:
+                    o = DerObjectId().decode(v).value
+                    v = tuple(map(int, o.split('.')))
+                elif tag_octet in (
+                    Number.Enumerated,
+                    Number.TimeTicks,
+                    Number.Gauge32,
+                    Number.Counter32,
+                    Number.Counter64,
+                ):
+                    i: Any = DerInteger()
+                    i._tag_octet = tag_octet
+                    v = i.decode(v).value
+                elif tag_octet in (
+                    Number.Null,
+                    Number.EndOfMibView,
+                    Number.NoSuchObject,
+                    Number.NoSuchInstance
+                ):
+                    v = None
+                else:
+                    v = o.payload
+            except Exception:
+                vbstr = v.hex(' ')
+                logging.warning(f'Failed to parse Value {vbstr}'[:80])
+                raise
+            variable_bindings.append((oid, tag_octet, v))
 
 
 class ScopedPDU:
@@ -48,7 +130,9 @@ class ScopedPDU:
         s = DerSequence([
             DerOctetString(self.contextengineid),
             DerOctetString(self.contextname),
-            self.data,
+            self.data,  # type: ignore
+            # PDU is not realy a DerObject but with the same interface as
+            # DerObject.encode
         ])
         return s.encode()
 
