@@ -1,32 +1,14 @@
-# type: ignore
-from Crypto.Util.asn1 import DerSequence, DerObjectId
-# from .package import Package
+from Crypto.Util.asn1 import DerSequence, DerOctetString
+from typing import Any
+from ..pdu import PDU
 
 
 def _decode_scopedpdu(data):
     s2 = DerSequence()
+    contextengineid, contextname, data = s2.decode(data)
 
-    # TODO
-    try:
-        contextengineid, contextname, data = s2.decode(data)
-    except ValueError:
-        contextengineid, contextname, data = s2._seq
-
-    tag_octet = data[0]
-    pdu_id = tag_octet - 0xA0
-
-    s4 = DerSequence(implicit=pdu_id)
-    s4.decode(data)
-    request_id, error_status, error_index, variable_bindings_ = s4
-
-    variable_bindings = []
-    s = DerSequence()
-    for vb in s.decode(variable_bindings_):
-        s = DerSequence()
-        oid, v = s.decode(vb)
-        oid = DerObjectId().decode(oid)
-        oid = tuple(map(int, oid.value.split('.')))
-        variable_bindings.append((oid, None, v))
+    pdu_id, request_id, error_status, error_index, variable_bindings = \
+        PDU.decode(data)
 
     return [
         contextengineid,
@@ -42,7 +24,7 @@ def _decode_scopedpdu(data):
 
 
 def _decode_msgsecurityparameters(data):
-    seq_der = DerSequence()
+    seq_der: Any = DerSequence()
     seq_der.decode(data)
     return [
         seq_der[0][2:],
@@ -54,12 +36,21 @@ def _decode_msgsecurityparameters(data):
     ]
 
 
-class Decoder:
+class Package:
+
+    request_id: int
+    version: int
+    msgmaxsize: int
+    msgflags: bytes
+    msgsecuritymodel: int
+    msgsecurityparameters: list
+    msgdata: Any
+
     def decode(self, data):
-        s = DerSequence()
+        s: Any = DerSequence()
         version, msgglobaldata, msgsecurityparameters, msgdata = s.decode(data)
 
-        s1 = DerSequence()
+        s1: Any = DerSequence()
         msgid, msgmaxsize, msgflags, msgsecuritymodel = \
             s1.decode(msgglobaldata)
 
@@ -70,9 +61,10 @@ class Decoder:
         self.msgsecuritymodel = msgsecuritymodel
         self.msgsecurityparameters = \
             _decode_msgsecurityparameters(msgsecurityparameters[2:])
-        self.msgdata = msgdata[2:] if self.msgflags == b'\x03' else \
+        self.msgdata = msgdata if self.msgflags == b'\x03' else \
             _decode_scopedpdu(msgdata)
 
     def decrypt(self, proto, key):
-        data = proto.decrypt(key, self.msgdata[2:], self.msgsecurityparameters)
+        v = DerOctetString().decode(self.msgdata).payload
+        data = proto.decrypt(key, v, self.msgsecurityparameters)
         self.msgdata = _decode_scopedpdu(data)

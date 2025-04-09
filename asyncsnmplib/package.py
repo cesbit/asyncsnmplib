@@ -1,6 +1,6 @@
 from Crypto.Util.asn1 import DerSequence, DerOctetString
 from typing import Optional, Tuple, List
-from .asn1 import Decoder, Tag, TOid, TValue
+from .asn1 import Tag, TOid, TValue
 from .pdu import PDU
 
 
@@ -28,22 +28,16 @@ class Package:
         return encoder.encode()
 
     def decode(self, data):
-        decoder = Decoder(data)
-        with decoder.enter():
-            decoder.read()  # version
-            decoder.read()  # community
+        s2 = DerSequence()
+        _, _, data = s2.decode(data)
 
-            with decoder.enter():
-                _, self.request_id = decoder.read()
-                _, self.error_status = decoder.read()
-                _, self.error_index = decoder.read()
+        _, request_id, error_status, error_index, variable_bindings = \
+            PDU.decode(data)
 
-                with decoder.enter():
-                    while not decoder.eof():
-                        with decoder.enter():
-                            _, oid = decoder.read()
-                            tag, value = decoder.read()
-                            self.variable_bindings.append((oid, tag, value))
+        self.request_id = request_id
+        self.error_status = error_status
+        self.error_index = error_index
+        self.variable_bindings = variable_bindings
 
 
 class SnmpMessage(Package):

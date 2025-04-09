@@ -61,17 +61,19 @@ def _get_pre_iv(engine_boots, engine_time):
 
 
 def encrypt_data_aes(key, data, msgsecurityparams):
+    sz = len(data)
     msgsecurityparams[5] = salt = get_random_bytes(8)
     pre_iv = _get_pre_iv(msgsecurityparams[1], msgsecurityparams[2])
     obj = AES.new(key[:16], AES.MODE_CFB, pre_iv + salt, segment_size=128)
-    return obj.encrypt(pad(data, 16))
+    return obj.encrypt(pad(data, 16))[:sz]  # keep orig size
 
 
 def decrypt_data_aes(key, data, msgsecurityparams):
+    sz = len(data)
     pre_iv = _get_pre_iv(msgsecurityparams[1], msgsecurityparams[2])
     iv = pre_iv + msgsecurityparams[5]
     obj = AES.new(key[:16], AES.MODE_CFB, iv, segment_size=128)
-    return obj.decrypt(pad(data, 16))
+    return obj.decrypt(pad(data, 16))[:sz]  # keep orig size
 
 
 class Priv:
