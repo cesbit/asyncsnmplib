@@ -35,15 +35,15 @@ class PDU(DerObject):
         ], implicit=self.pdu_id)
         return s.encode()
 
-    def decode(self, data):
-        tag_octet = data[0]
+    def decode(self, der_encoded):
+        tag_octet = der_encoded[0]
         pdu_id = tag_octet - 0xA0
 
         try:
-            s: Any = DerSequence(implicit=pdu_id).decode(data)
+            s: Any = DerSequence(implicit=pdu_id).decode(der_encoded)
             request_id, error_status, error_index, vbs = s
         except Exception:
-            vbsstr = data.hex(' ')
+            vbsstr = der_encoded.hex(' ')
             logging.warning(f'Failed to parse PDU {vbsstr}'[:80])
             raise
 
@@ -68,12 +68,16 @@ class PDU(DerObject):
                 oid, v = s.decode(vb)
                 oid = DerObjectId().decode(oid)
                 oid = tuple(map(int, oid.value.split('.')))
-                if isinstance(v, int):
-                    # DER INTEGERs are already decoded
-                    tag_octet = Number.Integer
-                    variable_bindings.append((oid, tag_octet, v))
-                    continue
-
+            except Exception:
+                vbstr = vb.hex(' ')
+                logging.warning(f'Failed to parse VarBind {vbstr}'[:80])
+                raise
+            if isinstance(v, int):
+                # DER INTEGERs are already decoded
+                tag_octet = Number.Integer
+                variable_bindings.append((oid, tag_octet, v))
+                continue
+            try:
                 o: Any = DerObject().decode(v)
                 tag_octet = o._tag_octet
                 if tag_octet == Number.Boolean:
@@ -101,8 +105,8 @@ class PDU(DerObject):
                 else:
                     v = o.payload
             except Exception:
-                vbstr = vb.hex(' ')
-                logging.warning(f'Failed to parse VarBind {vbstr}'[:80])
+                vbstr = v.hex(' ')
+                logging.warning(f'Failed to parse Value {vbstr}'[:80])
                 raise
             variable_bindings.append((oid, tag_octet, v))
 
