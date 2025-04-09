@@ -6,7 +6,7 @@ from typing import Any
 from .asn1 import Number
 
 
-class PDU(DerObject):
+class PDU:
     pdu_id = None
 
     def __init__(
@@ -130,7 +130,9 @@ class ScopedPDU:
         s = DerSequence([
             DerOctetString(self.contextengineid),
             DerOctetString(self.contextname),
-            self.data,
+            self.data,  # type: ignore
+            # PDU is not realy a DerObject but with the same interface as
+            # DerObject.encode
         ])
         return s.encode()
 

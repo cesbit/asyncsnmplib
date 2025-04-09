@@ -23,7 +23,9 @@ class Package:
         encoder = DerSequence([
             self.version,
             DerOctetString(self.community),
-            self.pdu
+            self.pdu  # type: ignore
+            # PDU is not realy a DerObject but with the same interface as
+            # DerObject.encode
         ])
         return encoder.encode()
 
