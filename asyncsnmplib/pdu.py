@@ -6,7 +6,7 @@ from Crypto.Util.asn1 import (
 from typing import Any
 from .asn1 import Number
 
-MAX_CHARS_PKG = None if os.getenv('LOG_LEVEL', '').lower() == 'DEBUG' else 80
+MAX_CHARS_PKG = None if os.getenv('LOG_LEVEL', '').lower() == 'debug' else 80
 
 
 class PDU:
@@ -47,8 +47,8 @@ class PDU:
             request_id, error_status, error_index, vbs = s
         except Exception as e:
             msg = str(e) or type(e).__name__
-            vbsstr = der_encoded.hex(' ')[:MAX_CHARS_PKG]
-            logging.warning(f'Failed to parse PDU: {msg} {vbsstr}')
+            pkgstr = der_encoded.hex(' ')[:MAX_CHARS_PKG]
+            logging.warning(f'Failed to parse PDU: {msg} {pkgstr}')
             raise
 
         self.pdu_id = pdu_id
@@ -64,8 +64,8 @@ class PDU:
             s: Any = DerSequence().decode(vbs)
         except Exception as e:
             msg = str(e) or type(e).__name__
-            vbsstr = vbs.hex(' ')[:MAX_CHARS_PKG]
-            logging.warning(f'Failed to parse VarBindList: {msg} {vbsstr}')
+            pkgstr = der_encoded.hex(' ')[:MAX_CHARS_PKG]
+            logging.warning(f'Failed to parse VarBindList: {msg} {pkgstr}')
             raise
         for vb in s:
             try:
