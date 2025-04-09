@@ -31,13 +31,16 @@ class Package:
         s2 = DerSequence()
         _, _, data = s2.decode(data)
 
-        _, request_id, error_status, error_index, variable_bindings = \
-            PDU.decode(data)
-
-        self.request_id = request_id
-        self.error_status = error_status
-        self.error_index = error_index
-        self.variable_bindings = variable_bindings
+        pdu = PDU()
+        try:
+            pdu.decode(data)
+        except Exception:
+            raise
+        finally:
+            self.request_id = pdu.request_id
+            self.error_status = pdu.error_status
+            self.error_index = pdu.error_index
+            self.variable_bindings = pdu.variable_bindings
 
 
 class SnmpMessage(Package):

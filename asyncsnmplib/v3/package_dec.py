@@ -7,18 +7,18 @@ def _decode_scopedpdu(data):
     s2 = DerSequence()
     contextengineid, contextname, data = s2.decode(data)
 
-    pdu_id, request_id, error_status, error_index, variable_bindings = \
-        PDU.decode(data)
+    pdu = PDU()
+    pdu.decode(data)
 
     return [
         contextengineid,
         contextname,
         [
-            pdu_id,
-            request_id,
-            error_status,
-            error_index,
-            variable_bindings
+            pdu.pdu_id,
+            pdu.request_id,
+            pdu.error_status,
+            pdu.error_index,
+            pdu.variable_bindings
         ]
     ]
 

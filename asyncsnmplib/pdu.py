@@ -34,15 +34,22 @@ class PDU(DerObject):
         ], implicit=self.pdu_id)
         return s.encode()
 
-    @staticmethod
-    def decode(data):
+    def decode(self, data):
         tag_octet = data[0]
         pdu_id = tag_octet - 0xA0
 
         s: Any = DerSequence(implicit=pdu_id).decode(data)
         request_id, error_status, error_index, vbs = s
 
-        variable_bindings = []
+        self.pdu_id = pdu_id
+        # it is important to set request_id early so that that the
+        # future/handle can be found to set the exception which happen
+        # after this
+        self.request_id = request_id
+        self.error_status = error_status
+        self.error_index = error_index
+        self.variable_bindings = variable_bindings = []
+
         s: Any = DerSequence().decode(vbs)
         for vb in s:
             s = DerSequence()
@@ -82,14 +89,6 @@ class PDU(DerObject):
             else:
                 v = o.payload
             variable_bindings.append((oid, tag_octet, v))
-
-        return (
-            pdu_id,
-            request_id,
-            error_status,
-            error_index,
-            variable_bindings,
-        )
 
 
 class ScopedPDU:
