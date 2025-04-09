@@ -41,7 +41,6 @@ class SnmpV3Protocol(SnmpProtocol):
             else:
                 logging.error(
                     self._log_with_suffix('Failed to decode package'))
-            logging.error(self._log_with_suffix('Failed to decode package'))
         else:
             pid = pkg.request_id
             if pid not in self.requests:
