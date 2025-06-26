@@ -30,7 +30,8 @@ DEFAULT_TIMEOUTS = (20, 10, 10)
 
 
 class SnmpProtocol(asyncio.DatagramProtocol):
-    __slots__ = ('loop', 'target', 'transport', 'requests', '_request_id')
+    __slots__ = (
+        'loop', 'target', 'transport', 'requests', '_request_id', '_timeouts')
 
     def __init__(self, target, timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self.loop = asyncio.get_running_loop()
