@@ -18,6 +18,7 @@ class Test0(unittest.TestCase):
         cl.close()
 
     def test1(self):
+        # will return error as this user2 usmmodel requires auth_proto, auth_key, priv_proto, priv_key
         cl = SnmpV3(HOST, 'user2', loop=loop)
         loop.run_until_complete(cl.connect())
         with self.assertRaises(Exception):
@@ -25,6 +26,7 @@ class Test0(unittest.TestCase):
         cl.close()
 
     def test2(self):
+        # will return error as this user2 usmmodel requires priv_proto, priv_key
         cl = SnmpV3(HOST, 'user2', (USM_AUTH_HMAC96_SHA, 'Password1'), loop=loop)
         loop.run_until_complete(cl.connect())
         with self.assertRaises(Exception):
@@ -32,7 +34,8 @@ class Test0(unittest.TestCase):
         cl.close()
 
     def test3(self):
-        cl = SnmpV3(HOST, 'user2', (USM_AUTH_HMAC96_SHA, 'Password2'), loop=loop)
+        # will return error as this user2 usmmodel requires priv_proto, priv_key, regardless of invalid auth_key
+        cl = SnmpV3(HOST, 'user2', (USM_AUTH_HMAC96_SHA, 'INVALID'), loop=loop)
         loop.run_until_complete(cl.connect())
         with self.assertRaises(Exception):
             loop.run_until_complete(cl.walk(OID, IS_TABLE))
