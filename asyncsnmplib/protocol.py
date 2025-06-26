@@ -26,15 +26,18 @@ _ERROR_STATUS_TO_EXCEPTION = {
     18: exceptions.SnmpErrorInconsistentName,
 }
 
+DEFAULT_TIMEOUTS = (20, 10, 10)
+
 
 class SnmpProtocol(asyncio.DatagramProtocol):
     __slots__ = ('loop', 'target', 'transport', 'requests', '_request_id')
 
-    def __init__(self, target):
+    def __init__(self, target, timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self.loop = asyncio.get_running_loop()
         self.target = target
         self.requests = {}
         self._request_id = 0
+        self._timeouts = timeouts
 
     def connection_made(self, transport):
         self.transport = transport
@@ -111,7 +114,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
         return fut.result()
 
     async def send(self, pkg):
-        for timeout in (28, 14, 14):
+        for timeout in self._timeouts:
             try:
                 res = await self._send(pkg, timeout)
             except exceptions.SnmpTimeoutError:
