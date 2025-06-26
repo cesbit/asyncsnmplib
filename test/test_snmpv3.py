@@ -1,8 +1,8 @@
 import unittest
 import asyncio
 from asyncsnmplib.client import SnmpV3, Snmp
-from asyncsnmplib.v3.auth import AUTH_PROTO, USM_AUTH_HMAC96_SHA, USM_AUTH_HMAC192_SHA256, USM_AUTH_HMAC96_MD5, USM_AUTH_HMAC128_SHA224, USM_AUTH_HMAC256_SHA384, USM_AUTH_HMAC384_SHA512
-from asyncsnmplib.v3.encr import PRIV_PROTO, USM_PRIV_CFB128_AES
+from asyncsnmplib.v3.auth import USM_AUTH_HMAC96_SHA, USM_AUTH_HMAC192_SHA256, USM_AUTH_HMAC96_MD5, USM_AUTH_HMAC128_SHA224, USM_AUTH_HMAC256_SHA384, USM_AUTH_HMAC384_SHA512
+from asyncsnmplib.v3.encr import USM_PRIV_CFB128_AES
 
 HOST = 'localhost'
 OID = (1, 3, 6, 1, 2, 1, 2, 2, 1)
@@ -42,7 +42,7 @@ class Test0(unittest.TestCase):
         cl.close()
 
     # def test4(self):
-    #     # will timeout as priv_key is incorrect
+    #     # will timeout as priv_key is incorrect, regardless of invalid auth_key
     #     cl = SnmpV3(HOST, 'user2', (USM_AUTH_HMAC96_SHA, 'INVALID'), (USM_PRIV_CFB128_AES, 'Password1'), loop=loop)  # timeout
     #     loop.run_until_complete(cl.connect())
     #     with self.assertRaises(Exception):
