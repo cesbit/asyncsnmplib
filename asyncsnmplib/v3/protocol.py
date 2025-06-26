@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import Any
-from ..exceptions import SnmpTimeoutError
+from ..exceptions import SnmpTimeoutError, SnmpRetryException
 from ..protocol import SnmpProtocol, _ERROR_STATUS_TO_EXCEPTION
 from .package import Package
 
@@ -83,9 +83,9 @@ class SnmpV3Protocol(SnmpProtocol):
         pdu_id, _, error_status, error_index, vbs = pdu
         if pdu_id == _REPORT_PDU_ID:
             for oid, _, _ in vbs:
-                e = _REPORT_OID_EXCEPTIONS.get(oid)
-                if e:
-                    raise Exception(e)
+                msg = _REPORT_OID_EXCEPTIONS.get(oid)
+                if msg:
+                    raise SnmpRetryException(msg)
         if pdu_id != _RESPONSE_PDU_ID:
             raise Exception('Expected a response pdu')
 
@@ -100,18 +100,21 @@ class SnmpV3Protocol(SnmpProtocol):
 
         return vbs
 
-    async def send_encrypted(
-            self, pkg, auth_proto, auth_key, priv_proto, priv_key):
-        for timeout in (20, 10, 10):
+    async def send_encrypted(self, pkg, auth_proto, auth_key, priv_proto,
+                             priv_key):
+        err = SnmpTimeoutError
+        for attempt, timeout in enumerate((28, 14, 14)):
             try:
                 res = await self._send_encrypted(
                     pkg, auth_proto, auth_key, priv_proto, priv_key, timeout)
             except SnmpTimeoutError:
                 pass
+            except SnmpRetryException as e:
+                err = e  # wins over timeout exception
             except Exception as e:
                 raise e
             else:
                 break
         else:
-            raise SnmpTimeoutError
+            raise err
         return res
