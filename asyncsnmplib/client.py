@@ -227,7 +227,7 @@ class SnmpV3(Snmp):
         except Exception:
             raise SnmpNoAuthParams
 
-    async def _get_auth_params(self, timeout=10):
+    async def _get_auth_params(self):
         assert self._protocol is not None
 
         # retrieve engine_id
