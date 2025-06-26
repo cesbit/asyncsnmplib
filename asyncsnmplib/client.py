@@ -11,7 +11,7 @@ from .exceptions import (
 from .asn1 import Tag, TOid, TValue
 from .package import SnmpMessage
 from .pdu import SnmpGet, SnmpGetNext, SnmpGetBulk, ScopedPDU
-from .protocol import SnmpProtocol
+from .protocol import SnmpProtocol, DEFAULT_TIMEOUTS
 from .v3.auth import Auth
 from .v3.encr import Priv
 from .v3.package import SnmpV3Message
@@ -27,7 +27,8 @@ class Snmp:
             port: int = 161,
             community: str = 'public',
             max_rows: int = 10_000,
-            loop: Optional[asyncio.AbstractEventLoop] = None):
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+            timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
@@ -35,6 +36,7 @@ class Snmp:
         self.port = port
         self.community = community.encode()
         self.max_rows = max_rows
+        self._timeouts = timeouts
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
@@ -44,7 +46,7 @@ class Snmp:
             family, *_, addr = infos[0]
             transport, protocol = await asyncio.wait_for(
                 self._loop.create_datagram_endpoint(
-                    lambda: SnmpProtocol(addr),
+                    lambda: SnmpProtocol(addr, timeouts=self._timeouts),
                     remote_addr=(self.host, self.port),
                     family=family),
                 timeout=timeout)
@@ -178,7 +180,8 @@ class SnmpV3(Snmp):
             priv: Optional[Tuple[Type[Priv], str]] = None,
             port: int = 161,
             max_rows: int = 10_000,
-            loop: Optional[asyncio.AbstractEventLoop] = None):
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+            timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
@@ -193,6 +196,7 @@ class SnmpV3(Snmp):
         self._priv_proto = None
         self._priv_hash = None
         self._priv_hash_localized = None
+        self._timeouts = timeouts
         if auth is not None:
             self._auth_proto, auth_passwd = auth
             self._auth_hash = self._auth_proto.hash_passphrase(auth_passwd)
@@ -208,7 +212,7 @@ class SnmpV3(Snmp):
             family, *_, addr = infos[0]
             transport, protocol = await asyncio.wait_for(
                 self._loop.create_datagram_endpoint(
-                    lambda: SnmpV3Protocol(addr),
+                    lambda: SnmpV3Protocol(addr, timeouts=self._timeouts),
                     remote_addr=(self.host, self.port),
                     family=family),
                 timeout=timeout)
@@ -223,7 +227,7 @@ class SnmpV3(Snmp):
         except Exception:
             raise SnmpNoAuthParams
 
-    async def _get_auth_params(self, timeout=10):
+    async def _get_auth_params(self):
         assert self._protocol is not None
 
         # retrieve engine_id

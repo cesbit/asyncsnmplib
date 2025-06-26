@@ -28,6 +28,10 @@ class SnmpException(Exception):
         return self.message
 
 
+class SnmpAuthV3Exception(Exception):
+    pass
+
+
 class SnmpTimeoutError(SnmpException):
     message = "The requested SNMP operation timed out."
 
