@@ -28,7 +28,7 @@ class SnmpException(Exception):
         return self.message
 
 
-class SnmpRetryException(Exception):
+class SnmpAuthV3Exception(Exception):
     pass
 
 

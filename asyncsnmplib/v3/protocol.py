@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from typing import Any
-from ..exceptions import SnmpTimeoutError, SnmpRetryException
+from ..exceptions import SnmpTimeoutError, SnmpAuthV3Exception
 from ..protocol import SnmpProtocol, _ERROR_STATUS_TO_EXCEPTION
 from .package import Package
 
@@ -85,7 +85,7 @@ class SnmpV3Protocol(SnmpProtocol):
             for oid, _, _ in vbs:
                 msg = _REPORT_OID_EXCEPTIONS.get(oid)
                 if msg:
-                    raise SnmpRetryException(msg)
+                    raise SnmpAuthV3Exception(msg)
         if pdu_id != _RESPONSE_PDU_ID:
             raise Exception('Expected a response pdu')
 
@@ -109,7 +109,7 @@ class SnmpV3Protocol(SnmpProtocol):
                     pkg, auth_proto, auth_key, priv_proto, priv_key, timeout)
             except SnmpTimeoutError:
                 pass
-            except SnmpRetryException as e:
+            except SnmpAuthV3Exception as e:
                 err = e  # wins over timeout exception
             except Exception as e:
                 raise e
