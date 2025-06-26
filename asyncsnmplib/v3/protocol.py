@@ -108,8 +108,6 @@ class SnmpV3Protocol(SnmpProtocol):
                     pkg, auth_proto, auth_key, priv_proto, priv_key, timeout)
             except SnmpTimeoutError:
                 pass
-            except Exception as e:
-                raise e
             else:
                 break
         else:

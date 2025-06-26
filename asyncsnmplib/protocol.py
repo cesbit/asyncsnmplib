@@ -120,8 +120,6 @@ class SnmpProtocol(asyncio.DatagramProtocol):
                 res = await self._send(pkg, timeout)
             except exceptions.SnmpTimeoutError:
                 pass
-            except Exception as e:
-                raise e
             else:
                 break
         else:
