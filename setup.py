@@ -1,9 +1,9 @@
 """setup.py
 locan installation: pip install -e .
 
-python setup.py sdist
-twine upload --repository pypitest dist/asyncsnmplib-x.x.x.tar.gz
-twine upload --repository pypi dist/asyncsnmplib-x.x.x.tar.gz
+python -m build
+twine upload --repository pypitest dist/asyncsnmplib-x.x.x*
+twine upload --repository pypi dist/asyncsnmplib-x.x.x*
 """
 from setuptools import setup, find_packages
 from asyncsnmplib.version import __version__ as version
