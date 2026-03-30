@@ -75,17 +75,24 @@ class SnmpV3Protocol(SnmpProtocol):
                     f'Package pid {pid} timed out after {timeout} seconds'))
             raise SnmpTimeoutError
 
-        res = fut.result()
-        if priv_proto:
+        res: Package = fut.result()
+
+        if priv_proto and res.msgflags == b'\x03':
             res.decrypt(priv_proto, priv_key)
 
         _, _, pdu = res.msgdata
         pdu_id, _, error_status, error_index, vbs = pdu
         if pdu_id == _REPORT_PDU_ID:
-            for oid, _, _ in vbs:
-                msg = _REPORT_OID_EXCEPTIONS.get(oid)
-                if msg:
-                    raise SnmpAuthV3Exception(msg)
+            msg = None
+            if len(vbs) == 0:
+                msg = 'Received a report pdu'
+            else:
+                oid = vbs[0]
+                oidstr = '.'.join(map(str, oid))
+                msgfb = f'Received a report pdu `{oidstr}`'
+                msg = _REPORT_OID_EXCEPTIONS.get(oid, msgfb)
+            raise SnmpAuthV3Exception(msg)
+
         if pdu_id != _RESPONSE_PDU_ID:
             raise Exception('Expected a response pdu')
 

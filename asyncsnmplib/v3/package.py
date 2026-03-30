@@ -120,11 +120,17 @@ class Package:
 
     def encrypt(self, proto, key):
         encoded = self.pdu.encode()
-        encryped = proto.encrypt(key, encoded, self.msgsecurityparameters)
+        try:
+            encryped = proto.encrypt(key, encoded, self.msgsecurityparameters)
+        except Exception as e:
+            raise Exception(f'failed to encrypt pdu: {e}')
         self.pdu = DerOctetString(encryped)
 
     def decrypt(self, proto, key):
-        pdu = proto.decrypt(key, self.msgdata, self.msgsecurityparameters)
+        try:
+            pdu = proto.decrypt(key, self.msgdata, self.msgsecurityparameters)
+        except Exception as e:
+            raise Exception(f'failed to decrypt pdu: {e}')
         decoder = Decoder(pdu)
         self.msgdata = _decode_scopedpdu(decoder)
 
