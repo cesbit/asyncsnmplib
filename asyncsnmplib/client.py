@@ -261,7 +261,7 @@ class SnmpV3(Snmp):
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGet(variable_bindings=oids)
-        spdu = ScopedPDU(pdu)
+        spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
         if timeout:
@@ -287,7 +287,7 @@ class SnmpV3(Snmp):
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetNext(variable_bindings=oids)
-        spdu = ScopedPDU(pdu)
+        spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(
@@ -304,7 +304,7 @@ class SnmpV3(Snmp):
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetBulk(variable_bindings=oids)
-        spdu = ScopedPDU(pdu)
+        spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(

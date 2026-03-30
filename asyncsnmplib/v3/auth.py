@@ -4,22 +4,13 @@ from typing import Callable, Type, Dict
 
 
 def hash_passphrase(passphrase, hash_func):
+    repeat, truncate = divmod(1 << 20, len(passphrase))
+
     hasher = hash_func()
-    buff = passphrase * (64 // len(passphrase) + 1)
-    ln = len(buff)
-    count = 0
-    mk = 0
-    while count < 16384:
-        i = mk + 64
-        if i < ln:
-            hasher.update(buff[mk:i])
-            mk = i
-        else:
-            hasher.update(
-                buff[mk:ln] + buff[0:i - ln]
-            )
-            mk = i - ln
-        count += 1
+    for _ in range(repeat):
+        hasher.update(passphrase)
+
+    hasher.update(passphrase[:truncate])
     digest = hasher.digest()
     return digest
 
