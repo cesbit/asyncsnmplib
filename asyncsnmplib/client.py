@@ -72,10 +72,11 @@ class Snmp:
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
-    def _get_bulk(self, oids):
+    def _get_bulk(self, oids, max_repetitions=20):
         if self._protocol is None:
             raise SnmpNoConnection
-        pdu = SnmpGetBulk(variable_bindings=oids)
+        pdu = SnmpGetBulk(variable_bindings=oids,
+                          max_repetitions=max_repetitions)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
@@ -99,8 +100,15 @@ class Snmp:
         prefixlen = len(oid)
         rows = []
 
+        prev_size = 0
+        max_r = 10
+
         while True:
-            vbs = await self._get_bulk([next_oid])
+            vbs, size = await self._get_bulk([next_oid], max_r)
+            size = size if size > prev_size else prev_size
+
+            print(f'MAX_R: {max_r} SIZE: {size}')
+            max_r = max(10, min(80, 1472 // (size // max_r)))
             for next_oid, _, value in vbs:
                 if next_oid[:prefixlen] != oid or value is None:
                     # we're done
@@ -297,13 +305,14 @@ class SnmpV3(Snmp):
             self._priv_proto,
             self._priv_hash_localized)
 
-    def _get_bulk(self, oids):
+    def _get_bulk(self, oids, max_repetitions=20):
         if self._protocol is None:
             raise SnmpNoConnection
         params = self._protocol.get_params()
         if params is None:
             raise SnmpNoAuthParams
-        pdu = SnmpGetBulk(variable_bindings=oids)
+        pdu = SnmpGetBulk(variable_bindings=oids,
+                          max_repetitions=max_repetitions)
         spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)

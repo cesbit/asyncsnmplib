@@ -39,7 +39,7 @@ class SnmpV3Protocol(SnmpProtocol):
                 # keep the connection params here as we need the updated
                 # engine_id, engine_time, engine_boots for further requests
                 self._params = pkg.msgsecurityparameters
-                self.requests[pid].set_result(pkg)
+                self.requests[pid].set_result((pkg, len(data)))
 
     def get_params(self):
         return self._params
@@ -75,7 +75,7 @@ class SnmpV3Protocol(SnmpProtocol):
                     f'Package pid {pid} timed out after {timeout} seconds'))
             raise SnmpTimeoutError
 
-        res: Package = fut.result()
+        res, size = fut.result()
 
         if priv_proto and res.msgflags == b'\x03':
             res.decrypt(priv_proto, priv_key)
@@ -105,7 +105,7 @@ class SnmpV3Protocol(SnmpProtocol):
             exception = _ERROR_STATUS_TO_EXCEPTION[error_status](oid)
             raise exception
 
-        return vbs
+        return vbs, size
 
     async def send_encrypted(self, pkg, auth_proto, auth_key, priv_proto,
                              priv_key):
