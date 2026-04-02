@@ -106,8 +106,6 @@ class Snmp:
         while True:
             vbs, size = await self._get_bulk([next_oid], max_r)
             size = size if size > prev_size else prev_size
-
-            print(f'MAX_R: {max_r} SIZE: {size}')
             max_r = max(10, min(80, 1472 // (size // max_r)))
             for next_oid, _, value in vbs:
                 if next_oid[:prefixlen] != oid or value is None:
