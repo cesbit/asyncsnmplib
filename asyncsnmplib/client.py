@@ -83,16 +83,16 @@ class Snmp:
 
     async def get(self, oid: TOid, timeout: Optional[float] = None
                   ) -> Tuple[TOid, Tag, TValue]:
-        vbs = await self._get([oid], timeout)
+        vbs, _ = await self._get([oid], timeout)
         return vbs[0]
 
     async def get_next(self, oid: TOid) -> Tuple[TOid, Tag, TValue]:
-        vbs = await self._get_next([oid])
+        vbs, _ = await self._get_next([oid])
         return vbs[0]
 
     async def get_next_multi(self, oids: Iterable[TOid]
                              ) -> List[Tuple[TOid, TValue]]:
-        vbs = await self._get_next(oids)
+        vbs, _ = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
     async def walk(self, oid: TOid, is_table: bool,
@@ -150,7 +150,7 @@ class SnmpV1(Snmp):
 
         while True:
             try:
-                vbs = await self._get_next([next_oid])
+                vbs, _ = await self._get_next([next_oid])
             except SnmpErrorNoSuchName:
                 # snmp v1 uses error-status instead of end-of-mib exception
                 break
