@@ -18,7 +18,7 @@ _REPORT_OID_EXCEPTIONS = {
 
 
 class SnmpV3Protocol(SnmpProtocol):
-    __slots__ = ('_params')
+    __slots__ = ('_params', )
 
     def datagram_received(self, data: bytes, addr: Any):
         # NOTE on typing
