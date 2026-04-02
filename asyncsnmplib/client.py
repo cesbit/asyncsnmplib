@@ -16,6 +16,7 @@ from .v3.auth import Auth
 from .v3.encr import Priv
 from .v3.package import SnmpV3Message
 from .v3.protocol import SnmpV3Protocol
+from .v3.cache import SnmpV3Cache
 
 
 class Snmp:
@@ -189,28 +190,17 @@ class SnmpV3(Snmp):
             port: int = 161,
             max_rows: int = 10_000,
             loop: Optional[asyncio.AbstractEventLoop] = None,
+            cache: Optional[SnmpV3Cache] = None,
             timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
+        self._cache = cache or SnmpV3Cache(username, auth, priv)
         self.host = host
         self.port = port
         self.max_rows = max_rows
-        self._auth_params = None
         self._username = username.encode()
-        self._auth_proto = None
-        self._auth_hash = None
-        self._auth_hash_localized = None
-        self._priv_proto = None
-        self._priv_hash = None
-        self._priv_hash_localized = None
         self._timeouts = timeouts
-        if auth is not None:
-            self._auth_proto, auth_passwd = auth
-            self._auth_hash = self._auth_proto.hash_passphrase(auth_passwd)
-            if priv is not None:
-                self._priv_proto, priv_passwd = priv
-                self._priv_hash = self._auth_proto.hash_passphrase(priv_passwd)
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
@@ -228,6 +218,8 @@ class SnmpV3(Snmp):
             raise SnmpNoConnection
         self._protocol = protocol
         self._transport = transport
+
+    async def get_auth_parms(self):
         try:
             await self._get_auth_params()
         except SnmpTimeoutError:
@@ -250,22 +242,12 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         assert params  # params is always set when a valid package is recieved
 
-        try:
-            engine_id = params[0]
-            self._auth_hash_localized = self._auth_proto.localize(
-                self._auth_hash, engine_id) \
-                if self._auth_proto else None
-            self._priv_hash_localized = self._auth_proto.localize(
-                self._priv_hash, engine_id) \
-                if self._auth_proto and self._priv_proto else None
-        except Exception:
-            logging.exception('')
-            raise SnmpNoAuthParams
+        self._cache.set_params(params)
 
     def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._protocol.get_params()
+        params = self._cache.get_params()
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGet(variable_bindings=oids)
@@ -275,23 +257,23 @@ class SnmpV3(Snmp):
         if timeout:
             return self._protocol._send_encrypted(
                 message,
-                self._auth_proto,
-                self._auth_hash_localized,
-                self._priv_proto,
-                self._priv_hash_localized,
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized,
                 timeout=timeout)
         else:
             return self._protocol.send_encrypted(
                 message,
-                self._auth_proto,
-                self._auth_hash_localized,
-                self._priv_proto,
-                self._priv_hash_localized)
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized)
 
     def _get_next(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._protocol.get_params()
+        params = self._cache.get_params()
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetNext(variable_bindings=oids)
@@ -300,15 +282,15 @@ class SnmpV3(Snmp):
         message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(
             message,
-            self._auth_proto,
-            self._auth_hash_localized,
-            self._priv_proto,
-            self._priv_hash_localized)
+            self._cache._auth_proto,
+            self._cache._auth_hash_localized,
+            self._cache._priv_proto,
+            self._cache._priv_hash_localized)
 
     def _get_bulk(self, oids, max_repetitions=20):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._protocol.get_params()
+        params = self._cache.get_params()
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetBulk(variable_bindings=oids,
@@ -318,7 +300,7 @@ class SnmpV3(Snmp):
         message = SnmpV3Message.make(spdu, params)
         return self._protocol.send_encrypted(
             message,
-            self._auth_proto,
-            self._auth_hash_localized,
-            self._priv_proto,
-            self._priv_hash_localized)
+            self._cache._auth_proto,
+            self._cache._auth_hash_localized,
+            self._cache._priv_proto,
+            self._cache._priv_hash_localized)

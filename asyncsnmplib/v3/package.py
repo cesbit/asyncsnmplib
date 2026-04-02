@@ -1,5 +1,6 @@
 from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObject
 from ..asn1 import Decoder
+from .usm import UsmSecurityParameters
 
 
 def _decode_scopedpdu(decoder):
@@ -55,14 +56,14 @@ def _decode_msgsecurityparameters(data):
         _, username = decoder.read()
         _, authentication_parameters = decoder.read()
         _, privacy_parameters = decoder.read()
-    return [
+    return UsmSecurityParameters(
         authoritative_engine_id,
         authoritative_engine_boots,
         authoritative_engine_time,
         username,
         authentication_parameters,
         privacy_parameters
-    ]
+    )
 
 
 class Package:
@@ -72,7 +73,7 @@ class Package:
     msgmaxsize: int
     msgflags: bytes
     msgsecuritymodel: int
-    msgsecurityparameters: list
+    msgsecurityparameters: UsmSecurityParameters
     msgdata: list
     pdu: DerObject
 
