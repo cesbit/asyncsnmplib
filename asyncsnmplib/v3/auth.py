@@ -1,6 +1,6 @@
 import hmac
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512
-from typing import Callable, Type, Dict
+from typing import Callable, Type
 
 
 def hash_passphrase(passphrase, hash_func):
@@ -156,7 +156,7 @@ class USM_AUTH_HMAC384_SHA512(Auth):
     sz = 48
 
 
-AUTH_PROTO: Dict[str, Type[Auth]] = {
+AUTH_PROTO: dict[str, Type[Auth]] = {
     'USM_AUTH_HMAC96_MD5': USM_AUTH_HMAC96_MD5,
     'USM_AUTH_HMAC96_SHA': USM_AUTH_HMAC96_SHA,
     'USM_AUTH_HMAC128_SHA224': USM_AUTH_HMAC128_SHA224,
