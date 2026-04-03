@@ -31,6 +31,9 @@ async def main():
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger('asyncsnmplib')
+    logger.setLevel(logging.DEBUG)
+
     asyncio.run(main())
 ```
 
@@ -60,5 +63,8 @@ async def main():
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger('asyncsnmplib')
+    logger.setLevel(logging.DEBUG)
+
     asyncio.run(main())
 ```
