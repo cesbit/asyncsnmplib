@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Any
 from ..asn1 import TOid, TValue
 from .mib_index import MIB_INDEX
 from .syntax_funs import SYNTAX_FUNS
@@ -25,8 +25,8 @@ def on_integer(value: TValue) -> Union[int, None]:
     return value
 
 
-def on_oid_map(oid: TValue) -> Union[str, None]:
-    if not isinstance(oid, tuple):
+def on_oid_map(oid: TOid) -> Union[str, None]:
+    if not isinstance(oid, tuple):  # type: ignore
         # some devices don't follow mib's syntax
         # for example ipAddressTable.ipAddressPrefix returns an int in case of
         # old ups firmware version
@@ -37,16 +37,16 @@ def on_oid_map(oid: TValue) -> Union[str, None]:
     return MIB_INDEX.get(oid, {}).get('name', '.'.join(map(str, oid)))
 
 
-def on_value_map(value: int, map_: dict) -> Union[str, None]:
+def on_value_map(value: int, map_: dict[int, str]) -> Union[str, None]:
     return map_.get(value, ENUM_UNKNOWN)
 
 
-def on_value_map_b(value: bytes, map_: dict) -> str:
+def on_value_map_b(value: bytes, map_: dict[int, str]) -> str:
     return FLAGS_SEPERATOR.join(
         v for k, v in map_.items() if value[k // 8] & (1 << k % 8))
 
 
-def on_syntax(syntax: dict, value: TValue):
+def on_syntax(syntax: dict[str, Any], value: TValue):
     """
     this is point where bytes are converted to right datatype
     """
@@ -69,7 +69,7 @@ def on_syntax(syntax: dict, value: TValue):
 def on_result(
     base_oid: TOid,
     result: list[tuple[TOid, TValue]],
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[dict[str, TValue]]]:
     """returns a more compat result (w/o prefixes) and groups formatted
     metrics by base_oid
     """
@@ -85,7 +85,7 @@ def on_result(
         # for SEQUENCE types remove suffix
         base_name = result_name = base_name[:-5]
 
-    table = {}
+    table: dict[TOid, dict[str, TValue]] = {}
     for oid, value in result:
         idx = oid[prefixlen:]
         prefix = oid[:prefixlen]
@@ -113,14 +113,14 @@ def on_result(
 def on_result_base(
     base_oid: TOid,
     result: list[tuple[TOid, TValue]],
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[dict[str, TValue]]]:
     """returns formatted metrics grouped by base_oid
     """
     base = MIB_INDEX[base_oid]
     result_name = base['name']
     prefixlen = len(base_oid) + 1
 
-    table = {}
+    table: dict[TOid, dict[str, TValue]] = {}
     for oid, value in result:
         idx = oid[prefixlen:]
         prefix = oid[:prefixlen]

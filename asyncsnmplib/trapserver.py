@@ -1,10 +1,10 @@
-
 import asyncio
 import logging
 from typing import Optional, Any
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
-from .mib.mib_index import MIB_INDEX
+from .asn1 import Tag, TOid, TValue
+from .mib.mib_index import MIB_INDEX  # type: ignore
 
 # TODO  -- Traps
 #   This is an example for replacing value to usable data with an optional
@@ -16,7 +16,7 @@ from .mib.mib_index import MIB_INDEX
 # }
 
 
-def on_package(data):
+def on_package(data: bytes):
     decoder = Decoder(data)
     with decoder.enter():
         decoder.read()  # version
@@ -28,14 +28,15 @@ def on_package(data):
             tag, value = decoder.read()
             # print(value)
             tag, value = decoder.read()
-            generic_trap_id = value
+            # generic_trap_id = value
+            # print(GENERIC_TRAP[generic_trap_id])
             # print(value)
             tag, value = decoder.read()
             # print(value)
             tag, value = decoder.read()
             # print(value)
 
-            variable_bindings = []
+            variable_bindings = list[tuple[TOid, Tag, TValue]]()
             with decoder.enter():
                 while not decoder.eof():
                     with decoder.enter():
@@ -43,7 +44,6 @@ def on_package(data):
                         tag, value = decoder.read()
                         variable_bindings.append((oid, tag, value))
 
-            # print(GENERIC_TRAP[generic_trap_id])
             print(variable_bindings)
 
 
@@ -63,8 +63,8 @@ class SnmpTrapProtocol(SnmpProtocol):
                 self._log_with_suffix(f'Failed to decode trap package: {msg}'))
         else:
             logging.debug('Trap message received')
-            for oid, tag, value in pkg.variable_bindings:
-                mib_object = MIB_INDEX.get(oid[:-1])
+            for oid, _tag, value in pkg.variable_bindings:
+                mib_object = MIB_INDEX.get(oid[:-1])  # type: ignore
                 if mib_object is None:
                     # only accept oids from loaded mibs
                     continue
@@ -93,7 +93,7 @@ class SnmpTrap:
 
     async def listen(self):
         transport, protocol = await self._loop.create_datagram_endpoint(
-            lambda: SnmpTrapProtocol((None, None)),
+            lambda: SnmpTrapProtocol((self.host, self.port)),
             local_addr=(self.host, self.port),
         )
         self._protocol = protocol

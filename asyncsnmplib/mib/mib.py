@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class NoMibError(Exception):
     pass
 
@@ -6,8 +9,9 @@ class NoNameError(Exception):
     pass
 
 
-def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
-    lk = {
+def on_mib(mi: dict[Any, Any], mibname: str, mib: dict[str, Any],
+           lk_definitions: dict[str, Any]):
+    lk: dict[Any, Any] = {
         0: (0, ),
         1: (1, ),
         2: (2, ),
@@ -31,7 +35,7 @@ def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
         'ObjectSyntax',
     }
 
-    names = {}
+    names: dict[str, Any] = {}
 
     mib_imports = mib.pop('IMPORTS')
     for imibname, iobjs in mib_imports:
@@ -97,7 +101,7 @@ def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
 
     for name, obj in names.items():
         other_name = name
-        oid = []
+        oid: list[int] = []
         while other_name in names:
             path = names[other_name]['value']
             oid = path[1:] + oid
@@ -106,12 +110,12 @@ def on_mib(mi: dict, mibname: str, mib: dict, lk_definitions: dict):
         if other_name not in lk:
             raise NoNameError('! name {} {}'.format(name, other_name))
 
-        oid = lk[other_name] + tuple(oid)
-        lk[name] = oid
+        oid_ = lk[other_name] + tuple(oid)
+        lk[name] = oid_
 
         obj['mib_name'] = mibname
         obj['name'] = name
         obj['oid'] = oid
-        mi[oid] = obj
+        mi[oid_] = obj
 
     mi[mibname] = {**lk, None: lk_definitions}

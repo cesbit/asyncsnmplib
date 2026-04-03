@@ -21,12 +21,12 @@ class SnmpV3Cache:
         self._params = None
 
         self._username = username.encode()
-        self._auth_proto = None
-        self._auth_hash = None
-        self._auth_hash_localized = None
-        self._priv_proto = None
-        self._priv_hash = None
-        self._priv_hash_localized = None
+        self._auth_proto: Optional[Type[Auth]] = None
+        self._auth_hash: Optional[bytes] = None
+        self._auth_hash_localized: Optional[bytes] = None
+        self._priv_proto: Optional[Type[Priv]] = None
+        self._priv_hash: Optional[bytes] = None
+        self._priv_hash_localized: Optional[bytes] = None
         if auth is not None:
             self._auth_proto, auth_passwd = auth
             self._auth_hash = self._auth_proto.hash_passphrase(auth_passwd)
@@ -56,10 +56,12 @@ class SnmpV3Cache:
     def set_params(self, usm_params: UsmSecurityParameters):
         if self._auth_proto:
             self._auth_hash_localized = self._auth_proto.localize(
-                self._auth_hash, usm_params.authoritative_engine_id)
+                self._auth_hash,  # type: ignore
+                usm_params.authoritative_engine_id)
             if self._priv_proto:
                 self._priv_hash_localized = self._auth_proto.localize(
-                    self._priv_hash, usm_params.authoritative_engine_id)
+                    self._priv_hash,   # type: ignore
+                    usm_params.authoritative_engine_id)
 
         last_boot_time = time.time() - usm_params.authoritative_engine_time
         self._params = (usm_params, last_boot_time)

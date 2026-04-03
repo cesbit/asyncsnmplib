@@ -1,5 +1,7 @@
+from typing import Iterable
 from Crypto.Util.asn1 import (
     DerSequence, DerOctetString, DerObjectId, DerObject, DerNull)
+from .asn1 import TOid
 
 
 class PDU(DerObject):
@@ -7,10 +9,10 @@ class PDU(DerObject):
 
     def __init__(
             self,
-            request_id=0,
-            error_status=0,
-            error_index=0,
-            variable_bindings=[]):
+            request_id: int = 0,
+            error_status: int = 0,
+            error_index: int = 0,
+            variable_bindings: Iterable[TOid] = []):
         self.request_id = request_id
         self.error_status = error_status
         self.error_index = error_index
@@ -66,10 +68,10 @@ class SnmpGetBulk(PDU):
 
     def __init__(
             self,
-            request_id=0,
-            non_repeaters=0,
-            max_repetitions=20,
-            variable_bindings=[]):
+            request_id: int = 0,
+            non_repeaters: int = 0,
+            max_repetitions: int = 20,
+            variable_bindings: Iterable[TOid] = []):
         self.request_id = request_id
         self.non_repeaters = non_repeaters
         self.max_repetitions = max_repetitions

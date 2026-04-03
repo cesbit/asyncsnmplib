@@ -2,7 +2,9 @@ import asyncio
 import logging
 from typing import Any
 from . import exceptions
+from .asn1 import Tag, TOid, TValue
 from .package import Package
+from .package import SnmpMessage
 
 
 _ERROR_STATUS_TO_EXCEPTION = {
@@ -33,14 +35,15 @@ class SnmpProtocol(asyncio.DatagramProtocol):
     __slots__ = (
         'loop', 'target', 'transport', 'requests', '_request_id', '_timeouts')
 
-    def __init__(self, target, timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
+    def __init__(self, target: tuple[str, int] | tuple[str, int, int, int],
+                 timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self.loop = asyncio.get_running_loop()
         self.target = target
-        self.requests = {}
+        self.requests: dict[int, asyncio.Future[Any]] = {}
         self._request_id = 0
         self._timeouts = timeouts
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.DatagramTransport):
         self.transport = transport
 
     def datagram_received(self, data: bytes, addr: Any):
@@ -91,11 +94,11 @@ class SnmpProtocol(asyncio.DatagramProtocol):
                     logging.error(
                         self._log_with_suffix('Package future already done'))
 
-    def _log_with_suffix(self, msg):
+    def _log_with_suffix(self, msg: str):
         addr = self.target[0]
         return f'{msg} (source ip: {addr})'
 
-    async def _send(self, pkg, timeout=10):
+    async def _send(self, pkg: SnmpMessage, timeout: float = 10.0):
         self._request_id += 1
         self._request_id %= 0x10000
 
@@ -115,7 +118,8 @@ class SnmpProtocol(asyncio.DatagramProtocol):
             raise exceptions.SnmpTimeoutError
         return fut.result()
 
-    async def send(self, pkg):
+    async def send(self, pkg: Any
+                   ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         for timeout in self._timeouts:
             try:
                 res = await self._send(pkg, timeout)

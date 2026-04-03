@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 __all__ = (
     "SnmpTimeoutError",
     "SnmpErrorTooBig",
@@ -63,7 +66,7 @@ class SnmpVendorOidError(SnmpException):
 class SnmpErrorStatus(SnmpException):
     message = ""
 
-    def __init__(self, oid):
+    def __init__(self, oid: Optional[str]):
         self.oid = oid
 
     def __str__(self):
