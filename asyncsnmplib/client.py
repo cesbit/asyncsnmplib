@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Iterable, Optional, Tuple, List, Type
+from typing import Iterable, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
@@ -28,7 +28,7 @@ class Snmp:
             port: int = 161,
             community: str = 'public',
             max_rows: int = 10_000,
-            loop: Optional[asyncio.AbstractEventLoop] = None,
+            loop: asyncio.AbstractEventLoop | None = None,
             timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
@@ -81,22 +81,22 @@ class Snmp:
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
-    async def get(self, oid: TOid, timeout: Optional[float] = None
-                  ) -> Tuple[TOid, Tag, TValue]:
+    async def get(self, oid: TOid, timeout: float | None = None
+                  ) -> tuple[TOid, Tag, TValue]:
         vbs, _ = await self._get([oid], timeout)
         return vbs[0]
 
-    async def get_next(self, oid: TOid) -> Tuple[TOid, Tag, TValue]:
+    async def get_next(self, oid: TOid) -> tuple[TOid, Tag, TValue]:
         vbs, _ = await self._get_next([oid])
         return vbs[0]
 
     async def get_next_multi(self, oids: Iterable[TOid]
-                             ) -> List[Tuple[TOid, TValue]]:
+                             ) -> list[tuple[TOid, TValue]]:
         vbs, _ = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
     async def walk(self, oid: TOid, is_table: bool,
-                   ) -> List[Tuple[TOid, TValue]]:
+                   ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -107,8 +107,6 @@ class Snmp:
         while True:
             vbs, size = await self._get_bulk([next_oid], max_r)
             size = size if size > prev_size else prev_size
-
-            print(f'MAX_R: {max_r} SIZE: {size}')
             max_r = max(10, min(80, 1472 // (size // max_r)))
             for next_oid, _, value in vbs:
                 if next_oid[:prefixlen] != oid or value is None:
@@ -143,7 +141,7 @@ class SnmpV1(Snmp):
     version = 0
 
     async def walk(self, oid: TOid, is_table: bool,
-                   ) -> List[Tuple[TOid, TValue]]:
+                   ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -185,12 +183,12 @@ class SnmpV3(Snmp):
             self,
             host: str,
             username: str,
-            auth: Optional[Tuple[Type[Auth], str]] = None,
-            priv: Optional[Tuple[Type[Priv], str]] = None,
+            auth: tuple[Type[Auth], str] | None = None,
+            priv: tuple[Type[Priv], str] | None = None,
             port: int = 161,
             max_rows: int = 10_000,
-            loop: Optional[asyncio.AbstractEventLoop] = None,
-            cache: Optional[SnmpV3Cache] = None,
+            loop: asyncio.AbstractEventLoop | None = None,
+            cache: SnmpV3Cache | None = None,
             timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
