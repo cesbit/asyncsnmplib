@@ -1,11 +1,14 @@
+import asyncio
+import logging
 import time
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple, Type, Callable, Awaitable
 from .auth import Auth
 from .encr import Priv
 from .usm import UsmSecurityParameters
 
 
 class SnmpV3Cache:
+    _lock: asyncio.Lock
     _params: Optional[tuple[UsmSecurityParameters, float]]
 
     def __init__(
@@ -14,6 +17,7 @@ class SnmpV3Cache:
         auth: Optional[Tuple[Type[Auth], str]] = None,
         priv: Optional[Tuple[Type[Priv], str]] = None,
     ):
+        self._lock = asyncio.Lock()
         self._params = None
 
         self._username = username.encode()
@@ -30,21 +34,24 @@ class SnmpV3Cache:
                 self._priv_proto, priv_passwd = priv
                 self._priv_hash = self._auth_proto.hash_passphrase(priv_passwd)
 
-    def has_params(self):
-        return self._params is not None
-
-    def get_params(self) -> Optional[UsmSecurityParameters]:
-        if self._params is None:
-            return
-        usm_params, last_boot_time = self._params
-        return UsmSecurityParameters(
-            usm_params.authoritative_engine_id,
-            usm_params.authoritative_engine_boots,
-            int(time.time() - last_boot_time),
-            usm_params.username,
-            usm_params.authentication_parameters,
-            usm_params.privacy_parameters,
-        )
+    async def get_params(self,
+                         load: Callable[[], Awaitable[UsmSecurityParameters]]
+                         ) -> tuple[UsmSecurityParameters, bool]:
+        async with self._lock:
+            if self._params is None:
+                logging.info('Retrieve new authentication params')
+                params = await load()
+                self.set_params(params)
+                return params, True
+            usm_params, last_boot_time = self._params
+            return UsmSecurityParameters(
+                usm_params.authoritative_engine_id,
+                usm_params.authoritative_engine_boots,
+                int(time.time() - last_boot_time),
+                usm_params.username,
+                usm_params.authentication_parameters,
+                usm_params.privacy_parameters,
+            ), False
 
     def set_params(self, usm_params: UsmSecurityParameters):
         if self._auth_proto:
@@ -56,3 +63,6 @@ class SnmpV3Cache:
 
         last_boot_time = time.time() - usm_params.authoritative_engine_time
         self._params = (usm_params, last_boot_time)
+
+    def clear(self):
+        self._params = None

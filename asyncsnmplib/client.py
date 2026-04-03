@@ -217,9 +217,10 @@ class SnmpV3(Snmp):
         self._protocol = protocol
         self._transport = transport
 
-    async def get_auth_parms(self):
+    async def get_auth_params(self):
         try:
-            await self._get_auth_params()
+            res = await self._get_auth_params()
+            return res
         except SnmpTimeoutError:
             raise SnmpTimeoutError
         except Exception:
@@ -240,12 +241,12 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         assert params  # params is always set when a valid package is recieved
 
-        self._cache.set_params(params)
+        return params
 
-    def _get(self, oids, timeout=None):
+    async def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGet(variable_bindings=oids)
@@ -253,42 +254,68 @@ class SnmpV3(Snmp):
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
         if timeout:
-            return self._protocol._send_encrypted(
-                message,
-                self._cache._auth_proto,
-                self._cache._auth_hash_localized,
-                self._cache._priv_proto,
-                self._cache._priv_hash_localized,
-                timeout=timeout)
-        else:
-            return self._protocol.send_encrypted(
+            try:
+                res = await self._protocol._send_encrypted(
+                    message,
+                    self._cache._auth_proto,
+                    self._cache._auth_hash_localized,
+                    self._cache._priv_proto,
+                    self._cache._priv_hash_localized,
+                    timeout=timeout)
+            except Exception:
+                if is_new:
+                    raise
+                self._cache.clear()
+                res = await self._get(oids, timeout)
+                return res
+            else:
+                return res
+        try:
+            res = await self._protocol.send_encrypted(
                 message,
                 self._cache._auth_proto,
                 self._cache._auth_hash_localized,
                 self._cache._priv_proto,
                 self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get(oids)
+            return res
+        else:
+            return res
 
-    def _get_next(self, oids):
+    async def _get_next(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetNext(variable_bindings=oids)
         spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
-        return self._protocol.send_encrypted(
-            message,
-            self._cache._auth_proto,
-            self._cache._auth_hash_localized,
-            self._cache._priv_proto,
-            self._cache._priv_hash_localized)
+        try:
+            res = await self._protocol.send_encrypted(
+                message,
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get_next(oids)
+            return res
+        else:
+            return res
 
-    def _get_bulk(self, oids, max_repetitions=20):
+    async def _get_bulk(self, oids, max_repetitions=20):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetBulk(variable_bindings=oids,
@@ -296,9 +323,18 @@ class SnmpV3(Snmp):
         spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
-        return self._protocol.send_encrypted(
-            message,
-            self._cache._auth_proto,
-            self._cache._auth_hash_localized,
-            self._cache._priv_proto,
-            self._cache._priv_hash_localized)
+        try:
+            res = await self._protocol.send_encrypted(
+                message,
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get_bulk(oids, max_repetitions)
+            return res
+        else:
+            return res
