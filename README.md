@@ -41,8 +41,8 @@ async def main():
 
     # walk an OID tree
     varbinds = await cl.walk(oid)
-    for oid, tag, value in varbinds:
-        print(f'OID: {oid} | TAG: {tag} | VALUE: {value}')
+    for oid, value in varbinds:
+        print(f'OID: {oid} | VALUE: {value}')
 
     cl.close()
 
