@@ -6,8 +6,7 @@
 
 import enum
 from contextlib import contextmanager
-from typing import Any, Iterator, List, NamedTuple, Optional, Tuple, Union, \
-    cast
+from typing import Any, Iterator, NamedTuple, Optional, Union, cast
 
 
 class Number(enum.IntEnum):
@@ -58,7 +57,7 @@ class Class(enum.IntEnum):
 TNumber = Union[Number, int]
 TType = Union[Type, int]
 TClass = Union[Class, int]
-TOid = Tuple[int, ...]
+TOid = tuple[int, ...]
 TValue = Any
 
 
@@ -76,7 +75,7 @@ class Decoder:
     __slots__ = ("m_stack", "m_tag")
 
     def __init__(self, data: bytes) -> None:
-        self.m_stack: List[List] = [[0, data]]
+        self.m_stack: list[list] = [[0, data]]
         self.m_tag: Optional[Tag] = None
 
     def peek(self) -> Tag:
@@ -108,7 +107,7 @@ class Decoder:
             self.m_tag = self._read_tag()
         return self.m_tag
 
-    def read(self, nr: Optional[TNumber] = None) -> Tuple[Tag, Any]:
+    def read(self, nr: Optional[TNumber] = None) -> tuple[Tag, Any]:
         """This method decodes one ASN.1 tag from the input and returns it as a
         ``(tag, value)`` tuple. ``tag`` is a 3-tuple ``(nr, typ, cls)``,
         while ``value`` is a Python object representing the ASN.1 value.
@@ -290,7 +289,7 @@ class Decoder:
 
     @staticmethod
     def _decode_object_identifier(bytes_data: bytes) -> TOid:
-        result: List[int] = []
+        result: list[int] = []
         value: int = 0
         for i in range(len(bytes_data)):
             byte = int(bytes_data[i])

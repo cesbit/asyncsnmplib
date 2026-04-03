@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Iterable, Optional, Tuple, List, Type
+from typing import Iterable, Optional, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
@@ -82,21 +82,21 @@ class Snmp:
         return self._protocol.send(message)
 
     async def get(self, oid: TOid, timeout: Optional[float] = None
-                  ) -> Tuple[TOid, Tag, TValue]:
+                  ) -> tuple[TOid, Tag, TValue]:
         vbs, _ = await self._get([oid], timeout)
         return vbs[0]
 
-    async def get_next(self, oid: TOid) -> Tuple[TOid, Tag, TValue]:
+    async def get_next(self, oid: TOid) -> tuple[TOid, Tag, TValue]:
         vbs, _ = await self._get_next([oid])
         return vbs[0]
 
     async def get_next_multi(self, oids: Iterable[TOid]
-                             ) -> List[Tuple[TOid, TValue]]:
+                             ) -> list[tuple[TOid, TValue]]:
         vbs, _ = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
     async def walk(self, oid: TOid, is_table: bool,
-                   ) -> List[Tuple[TOid, TValue]]:
+                   ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -107,8 +107,6 @@ class Snmp:
         while True:
             vbs, size = await self._get_bulk([next_oid], max_r)
             size = size if size > prev_size else prev_size
-
-            print(f'MAX_R: {max_r} SIZE: {size}')
             max_r = max(10, min(80, 1472 // (size // max_r)))
             for next_oid, _, value in vbs:
                 if next_oid[:prefixlen] != oid or value is None:
@@ -143,7 +141,7 @@ class SnmpV1(Snmp):
     version = 0
 
     async def walk(self, oid: TOid, is_table: bool,
-                   ) -> List[Tuple[TOid, TValue]]:
+                   ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
         rows = []
@@ -185,8 +183,8 @@ class SnmpV3(Snmp):
             self,
             host: str,
             username: str,
-            auth: Optional[Tuple[Type[Auth], str]] = None,
-            priv: Optional[Tuple[Type[Priv], str]] = None,
+            auth: Optional[tuple[Type[Auth], str]] = None,
+            priv: Optional[tuple[Type[Priv], str]] = None,
             port: int = 161,
             max_rows: int = 10_000,
             loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -219,9 +217,10 @@ class SnmpV3(Snmp):
         self._protocol = protocol
         self._transport = transport
 
-    async def get_auth_parms(self):
+    async def get_auth_params(self):
         try:
-            await self._get_auth_params()
+            res = await self._get_auth_params()
+            return res
         except SnmpTimeoutError:
             raise SnmpTimeoutError
         except Exception:
@@ -242,12 +241,12 @@ class SnmpV3(Snmp):
         params = self._protocol.get_params()
         assert params  # params is always set when a valid package is recieved
 
-        self._cache.set_params(params)
+        return params
 
-    def _get(self, oids, timeout=None):
+    async def _get(self, oids, timeout=None):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGet(variable_bindings=oids)
@@ -255,42 +254,68 @@ class SnmpV3(Snmp):
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
         if timeout:
-            return self._protocol._send_encrypted(
-                message,
-                self._cache._auth_proto,
-                self._cache._auth_hash_localized,
-                self._cache._priv_proto,
-                self._cache._priv_hash_localized,
-                timeout=timeout)
-        else:
-            return self._protocol.send_encrypted(
+            try:
+                res = await self._protocol._send_encrypted(
+                    message,
+                    self._cache._auth_proto,
+                    self._cache._auth_hash_localized,
+                    self._cache._priv_proto,
+                    self._cache._priv_hash_localized,
+                    timeout=timeout)
+            except Exception:
+                if is_new:
+                    raise
+                self._cache.clear()
+                res = await self._get(oids, timeout)
+                return res
+            else:
+                return res
+        try:
+            res = await self._protocol.send_encrypted(
                 message,
                 self._cache._auth_proto,
                 self._cache._auth_hash_localized,
                 self._cache._priv_proto,
                 self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get(oids)
+            return res
+        else:
+            return res
 
-    def _get_next(self, oids):
+    async def _get_next(self, oids):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetNext(variable_bindings=oids)
         spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
-        return self._protocol.send_encrypted(
-            message,
-            self._cache._auth_proto,
-            self._cache._auth_hash_localized,
-            self._cache._priv_proto,
-            self._cache._priv_hash_localized)
+        try:
+            res = await self._protocol.send_encrypted(
+                message,
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get_next(oids)
+            return res
+        else:
+            return res
 
-    def _get_bulk(self, oids, max_repetitions=20):
+    async def _get_bulk(self, oids, max_repetitions=20):
         if self._protocol is None:
             raise SnmpNoConnection
-        params = self._cache.get_params()
+        params, is_new = await self._cache.get_params(self.get_auth_params)
         if params is None:
             raise SnmpNoAuthParams
         pdu = SnmpGetBulk(variable_bindings=oids,
@@ -298,9 +323,18 @@ class SnmpV3(Snmp):
         spdu = ScopedPDU(pdu, params[0])
         params = [*params[:3], self._username, b'', b'']
         message = SnmpV3Message.make(spdu, params)
-        return self._protocol.send_encrypted(
-            message,
-            self._cache._auth_proto,
-            self._cache._auth_hash_localized,
-            self._cache._priv_proto,
-            self._cache._priv_hash_localized)
+        try:
+            res = await self._protocol.send_encrypted(
+                message,
+                self._cache._auth_proto,
+                self._cache._auth_hash_localized,
+                self._cache._priv_proto,
+                self._cache._priv_hash_localized)
+        except Exception:
+            if is_new:
+                raise
+            self._cache.clear()
+            res = await self._get_bulk(oids, max_repetitions)
+            return res
+        else:
+            return res
