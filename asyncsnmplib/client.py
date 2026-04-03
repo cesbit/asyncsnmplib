@@ -41,7 +41,7 @@ class Snmp:
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
-    async def connect(self, timeout: Optional[float] = 10.0):
+    async def connect(self, timeout: float = 10.0):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
             family, *_, addr = infos[0]
