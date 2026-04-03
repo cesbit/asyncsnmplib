@@ -109,7 +109,7 @@ class SnmpV3Protocol(SnmpProtocol):
 
     async def send_encrypted(self, pkg, auth_proto, auth_key, priv_proto,
                              priv_key):
-        for attempt, timeout in enumerate(self._timeouts):
+        for timeout in self._timeouts:
             try:
                 res = await self._send_encrypted(
                     pkg, auth_proto, auth_key, priv_proto, priv_key, timeout)
