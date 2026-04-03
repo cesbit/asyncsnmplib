@@ -1,3 +1,4 @@
+from typing import Union
 from ..asn1 import TOid, TValue
 from .mib_index import MIB_INDEX
 from .syntax_funs import SYNTAX_FUNS
@@ -8,7 +9,7 @@ ENUM_UNKNOWN = None
 FLAGS_SEPERATOR = ','
 
 
-def on_octet_string(value: TValue) -> str | None:
+def on_octet_string(value: TValue) -> Union[str, None]:
     """
     used as a fallback for OCTET STRING when no formatter is found/defined
     """
@@ -18,13 +19,13 @@ def on_octet_string(value: TValue) -> str | None:
         return
 
 
-def on_integer(value: TValue) -> int | None:
+def on_integer(value: TValue) -> Union[int, None]:
     if not isinstance(value, int):
         return
     return value
 
 
-def on_oid_map(oid: TValue) -> str | None:
+def on_oid_map(oid: TValue) -> Union[str, None]:
     if not isinstance(oid, tuple):
         # some devices don't follow mib's syntax
         # for example ipAddressTable.ipAddressPrefix returns an int in case of
@@ -36,7 +37,7 @@ def on_oid_map(oid: TValue) -> str | None:
     return MIB_INDEX.get(oid, {}).get('name', '.'.join(map(str, oid)))
 
 
-def on_value_map(value: int, map_: dict) -> str | None:
+def on_value_map(value: int, map_: dict) -> Union[str, None]:
     return map_.get(value, ENUM_UNKNOWN)
 
 

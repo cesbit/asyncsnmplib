@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Type, Callable, Awaitable
+from typing import Type, Callable, Awaitable, Optional
 from .auth import Auth
 from .encr import Priv
 from .usm import UsmSecurityParameters
@@ -9,13 +9,13 @@ from .usm import UsmSecurityParameters
 
 class SnmpV3Cache:
     _lock: asyncio.Lock
-    _params: tuple[UsmSecurityParameters, float] | None
+    _params: Optional[tuple[UsmSecurityParameters, float]]
 
     def __init__(
         self,
         username: str,
-        auth: tuple[Type[Auth], str] | None = None,
-        priv: tuple[Type[Priv], str] | None = None,
+        auth: Optional[tuple[Type[Auth], str]] = None,
+        priv: Optional[tuple[Type[Priv], str]] = None,
     ):
         self._lock = asyncio.Lock()
         self._params = None

@@ -6,7 +6,7 @@
 
 import enum
 from contextlib import contextmanager
-from typing import Any, Iterator, NamedTuple, cast
+from typing import Any, Iterator, NamedTuple, Optional, Union, cast
 
 
 class Number(enum.IntEnum):
@@ -54,9 +54,9 @@ class Class(enum.IntEnum):
     Private = 0xC0
 
 
-TNumber = Number | int
-TType = Type | int
-TClass = Class | int
+TNumber = Union[Number, int]
+TType = Union[Type, int]
+TClass = Union[Class, int]
 TOid = tuple[int, ...]
 TValue = Any
 
@@ -76,7 +76,7 @@ class Decoder:
 
     def __init__(self, data: bytes) -> None:
         self.m_stack: list[list] = [[0, data]]
-        self.m_tag: Tag | None = None
+        self.m_tag: Optional[Tag] = None
 
     def peek(self) -> Tag:
         """This method returns the current ASN.1 tag (i.e. the tag that a
@@ -107,7 +107,7 @@ class Decoder:
             self.m_tag = self._read_tag()
         return self.m_tag
 
-    def read(self, nr: TNumber | None = None) -> tuple[Tag, Any]:
+    def read(self, nr: Optional[TNumber] = None) -> tuple[Tag, Any]:
         """This method decodes one ASN.1 tag from the input and returns it as a
         ``(tag, value)`` tuple. ``tag`` is a 3-tuple ``(nr, typ, cls)``,
         while ``value`` is a Python object representing the ASN.1 value.

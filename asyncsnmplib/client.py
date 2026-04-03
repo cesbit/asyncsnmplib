@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Iterable, Type
+from typing import Iterable, Optional, Type
 from .exceptions import (
     SnmpNoConnection,
     SnmpErrorNoSuchName,
@@ -28,7 +28,7 @@ class Snmp:
             port: int = 161,
             community: str = 'public',
             max_rows: int = 10_000,
-            loop: asyncio.AbstractEventLoop | None = None,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
             timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
@@ -41,7 +41,7 @@ class Snmp:
 
     # On some systems it seems to be required to set the remote_addr argument
     # https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.create_datagram_endpoint
-    async def connect(self, timeout: float = 10.0):
+    async def connect(self, timeout: Optional[float] = 10.0):
         try:
             infos = await self._loop.getaddrinfo(self.host, self.port)
             family, *_, addr = infos[0]
@@ -81,7 +81,7 @@ class Snmp:
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
-    async def get(self, oid: TOid, timeout: float | None = None
+    async def get(self, oid: TOid, timeout: Optional[float] = None
                   ) -> tuple[TOid, Tag, TValue]:
         vbs, _ = await self._get([oid], timeout)
         return vbs[0]
@@ -183,12 +183,12 @@ class SnmpV3(Snmp):
             self,
             host: str,
             username: str,
-            auth: tuple[Type[Auth], str] | None = None,
-            priv: tuple[Type[Priv], str] | None = None,
+            auth: Optional[tuple[Type[Auth], str]] = None,
+            priv: Optional[tuple[Type[Priv], str]] = None,
             port: int = 161,
             max_rows: int = 10_000,
-            loop: asyncio.AbstractEventLoop | None = None,
-            cache: SnmpV3Cache | None = None,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+            cache: Optional[SnmpV3Cache] = None,
             timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None

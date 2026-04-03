@@ -1,4 +1,5 @@
 from Crypto.Util.asn1 import DerSequence, DerOctetString
+from typing import Optional
 from .asn1 import Decoder, Tag, TOid, TValue
 from .pdu import PDU
 
@@ -9,9 +10,9 @@ class Package:
     pdu: PDU
 
     def __init__(self):
-        self.request_id: int | None = None
-        self.error_status: int | None = None
-        self.error_index: int | None = None
+        self.request_id: Optional[int] = None
+        self.error_status: Optional[int] = None
+        self.error_index: Optional[int] = None
         self.variable_bindings: list[tuple[TOid, Tag, TValue]] = []
 
     def encode(self):
@@ -46,7 +47,7 @@ class Package:
 
 
 class SnmpMessage(Package):
-    request_id: int | None = None
+    request_id: Optional[int] = None
 
     @classmethod
     def make(cls, version, community, pdu):

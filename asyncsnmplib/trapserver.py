@@ -1,7 +1,7 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import Optional, Any
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
 from .mib.mib_index import MIB_INDEX
@@ -82,7 +82,7 @@ class SnmpTrap:
             port: int = 162,
             community: str = 'public',
             max_rows: int = 10_000,
-            loop: asyncio.AbstractEventLoop | None = None):
+            loop: Optional[asyncio.AbstractEventLoop] = None):
         self._loop = loop if loop else asyncio.get_running_loop()
         self._protocol = None
         self._transport = None
