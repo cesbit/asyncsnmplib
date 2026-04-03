@@ -1,4 +1,4 @@
-from typing import Tuple, Union, List
+from typing import Union
 from ..asn1 import TOid, TValue
 from .mib_index import MIB_INDEX
 from .syntax_funs import SYNTAX_FUNS
@@ -68,8 +68,8 @@ def on_syntax(syntax: dict, value: TValue):
 
 def on_result(
     base_oid: TOid,
-    result: List[Tuple[TOid, TValue]],
-) -> Tuple[str, List[dict]]:
+    result: list[tuple[TOid, TValue]],
+) -> tuple[str, list[dict]]:
     """returns a more compat result (w/o prefixes) and groups formatted
     metrics by base_oid
     """
@@ -112,8 +112,8 @@ def on_result(
 
 def on_result_base(
     base_oid: TOid,
-    result: List[Tuple[TOid, TValue]],
-) -> Tuple[str, List[dict]]:
+    result: list[tuple[TOid, TValue]],
+) -> tuple[str, list[dict]]:
     """returns formatted metrics grouped by base_oid
     """
     base = MIB_INDEX[base_oid]

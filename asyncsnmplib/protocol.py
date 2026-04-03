@@ -84,7 +84,8 @@ class SnmpProtocol(asyncio.DatagramProtocol):
                     if exception:
                         self.requests[pid].set_exception(exception)
                     else:
-                        self.requests[pid].set_result(pkg.variable_bindings)
+                        self.requests[pid].set_result((pkg.variable_bindings,
+                                                       len(data)))
                 except asyncio.InvalidStateError:
                     del self.requests[pid]
                     logging.error(
