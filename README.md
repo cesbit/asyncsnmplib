@@ -8,3 +8,57 @@
 ```
 pip install asyncsnmplib
 ```
+
+## Example
+
+```python
+from asyncsnmplib.client import Snmp
+
+
+async def main():
+    oid = (1, 3, 6, 1, 2, 1, 1, 1, 0)
+
+    host = '127.0.0.1'
+    community = 'public'
+
+    cl = Snmp(host, community=community)
+    await cl.connect()
+    res = await cl.get(oid)
+    oid, tag, value = res
+    print(f'OID: {oid}\nTAG: {tag}\nVALUE: {value}')
+
+    cl.close()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
+
+## Example SNMPv3
+
+```python
+from asyncsnmplib.client import SnmpV3
+from asyncsnmplib.v3.auth import USM_AUTH_HMAC96_SHA
+from asyncsnmplib.v3.encr import USM_PRIV_CFB128_AES
+
+
+async def main():
+    oid = (1, 3, 6, 1, 2, 1, 1, 1, 0)
+
+    host = '127.0.0.1'
+    username = 'User'
+    auth = (USM_AUTH_HMAC96_SHA, 'Password1')
+    priv = (USM_PRIV_CFB128_AES, 'Password2')
+
+    cl = SnmpV3(host, username=username, auth=auth, priv=priv)
+    await cl.connect()
+    res = await cl.get(oid)
+    oid, tag, value = res
+    print(f'OID: {oid}\nTAG: {tag}\nVALUE: {value}')
+
+    cl.close()
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
