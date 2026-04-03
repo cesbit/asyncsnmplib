@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Union
 from . import exceptions
 from .asn1 import Tag, TOid, TValue
 from .package import Package
@@ -35,7 +35,8 @@ class SnmpProtocol(asyncio.DatagramProtocol):
     __slots__ = (
         'loop', 'target', 'transport', 'requests', '_request_id', '_timeouts')
 
-    def __init__(self, target: tuple[str, int] | tuple[str, int, int, int],
+    def __init__(self,
+                 target: Union[tuple[str, int], tuple[str, int, int, int]],
                  timeouts: tuple[int, ...] = DEFAULT_TIMEOUTS):
         self.loop = asyncio.get_running_loop()
         self.target = target
