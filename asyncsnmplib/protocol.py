@@ -119,7 +119,7 @@ class SnmpProtocol(asyncio.DatagramProtocol):
             raise exceptions.SnmpTimeoutError
         return fut.result()
 
-    async def send(self, pkg: Any
+    async def send(self, pkg: Any  # SnmpMessage | SnmpV3Message
                    ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         for timeout in self._timeouts:
             try:

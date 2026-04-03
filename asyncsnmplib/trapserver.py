@@ -4,7 +4,7 @@ from typing import Optional, Any
 from .protocol import SnmpProtocol, Package
 from .asn1 import Decoder
 from .asn1 import Tag, TOid, TValue
-from .mib.mib_index import MIB_INDEX  # type: ignore
+from .mib.mib_index import MIB_INDEX
 
 # TODO  -- Traps
 #   This is an example for replacing value to usable data with an optional
@@ -64,7 +64,7 @@ class SnmpTrapProtocol(SnmpProtocol):
         else:
             logging.debug('Trap message received')
             for oid, _tag, value in pkg.variable_bindings:
-                mib_object = MIB_INDEX.get(oid[:-1])  # type: ignore
+                mib_object = MIB_INDEX.get(oid[:-1])
                 if mib_object is None:
                     # only accept oids from loaded mibs
                     continue

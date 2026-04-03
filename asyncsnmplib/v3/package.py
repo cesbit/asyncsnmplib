@@ -76,7 +76,7 @@ class Package:
     msgmaxsize: int
     msgflags: bytes
     msgsecuritymodel: int
-    msgsecurityparameters: UsmSecurityParameters
+    msgsecurityparameters: Any  # UsmSecurityParameters | list
     msgdata: list[Any]
     pdu: DerObject
 
@@ -139,12 +139,12 @@ class Package:
         self.msgdata = _decode_scopedpdu(decoder)
 
     def encode_auth(self, proto: Type[Auth], key: bytes):
-        self.msgsecurityparameters[4] = b'\x00' * proto.sz  # type: ignore
+        self.msgsecurityparameters[4] = b'\x00' * proto.sz
         encoded = self.encode()
         auth_key = proto.auth(key, encoded)
 
         # set auth_key
-        self.msgsecurityparameters[4] = auth_key[:proto.sz]  # type: ignore
+        self.msgsecurityparameters[4] = auth_key[:proto.sz]
 
         # encode again with the auth_key
         encoded = self.encode()
