@@ -4,3 +4,7 @@ pythonPlatform = "Linux"
 include = [
     "asyncsnmplib"
 ]
+typeCheckingMode = "strict"
+
+reportPrivateUsage = "none"
+reportUnnecessaryComparison = "none"

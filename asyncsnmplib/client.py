@@ -101,7 +101,7 @@ class Snmp:
 
     async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
-        next_oid = oid
+        next_oid: TOid = oid
         prefixlen = len(oid)
         rows: list[tuple[TOid, TValue]] = []
 
@@ -149,7 +149,7 @@ class SnmpV1(Snmp):
 
     async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
-        next_oid = oid
+        next_oid: TOid = oid
         prefixlen = len(oid)
         rows: list[tuple[TOid, TValue]] = []
 
