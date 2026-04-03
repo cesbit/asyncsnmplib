@@ -1,0 +1,15 @@
+version: "3.2"
+
+services:
+  snmpd:
+    build:
+      context: .
+    container_name: snmpd
+    privileged: true
+    ports:
+      - target: 161
+        published: 161
+        protocol: udp
+    volumes:
+      - "./snmpd.conf:/etc/snmpd.conf:ro"
+    restart: always
