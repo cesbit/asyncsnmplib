@@ -1,0 +1,66 @@
+#!python
+import argparse
+import asyncio
+from asyncsnmplib.client import Snmp, SnmpV1, SnmpV3
+from asyncsnmplib.v3.auth import AUTH_PROTO
+from asyncsnmplib.v3.encr import PRIV_PROTO
+
+
+def get_snmp_client():
+
+    if args.version == '2c':
+        cl = Snmp(
+            host=args.host,
+            community=args.community,
+            loop=loop,
+        )
+    elif args.version == '3':
+        username = args.username
+        auth = None
+        priv = None
+        if args.auth_key:
+            auth_proto = AUTH_PROTO.get(args.auth_proto)
+            auth = (auth_proto, args.auth_key)
+            if args.priv_key:
+                priv_proto = PRIV_PROTO.get(args.priv_proto)
+                priv = (priv_proto, args.priv_key)
+        cl = SnmpV3(
+            host=args.host,
+            username=username,
+            auth=auth,
+            priv=priv,
+            loop=loop,
+        )
+    elif args.version == '1':
+        cl = SnmpV1(
+            host=args.host,
+            community=args.community,
+            loop=loop,
+        )
+    else:
+        raise Exception(f'unsupported snmp version {args.version}')
+
+    return cl
+
+
+async def walk():
+    cl = get_snmp_client()
+
+    await cl.connect()
+    for oid_v in await cl.walk(tuple(map(int, args.oid.split('.'))), True):
+        print(oid_v)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-v', dest='version', default='2c')
+parser.add_argument('-c', dest='community', default='public')
+parser.add_argument('-u')
+parser.add_argument('-a', dest='auth_proto', default='USM_AUTH_HMAC96_SHA')
+parser.add_argument('-A', dest='auth_key')
+parser.add_argument('-x', dest='priv_proto', default='USM_PRIV_CFB128_AES')
+parser.add_argument('-X', dest='priv_key')
+parser.add_argument('host')
+parser.add_argument('oid')
+args = parser.parse_args()
+loop = asyncio.new_event_loop()
+loop.run_until_complete(walk())
