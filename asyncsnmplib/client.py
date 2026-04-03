@@ -95,7 +95,12 @@ class Snmp:
         vbs, _ = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid: TOid, is_table: bool,
+    async def get_bulk(self, oid: TOid, max_repetitions=20
+                       ) -> list[tuple[TOid, TValue]]:
+        vbs, _ = await self._get_bulk([oid], max_repetitions)
+        return vbs
+
+    async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)
@@ -140,7 +145,10 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid: TOid, is_table: bool,
+    async def get_bulk(self, *args):
+        raise Exception('GETBULK not available for SNMP v1')
+
+    async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
         next_oid = oid
         prefixlen = len(oid)

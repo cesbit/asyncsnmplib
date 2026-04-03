@@ -23,9 +23,26 @@ async def main():
 
     cl = Snmp(host, community=community)
     await cl.connect()
+
+    # GET
     res = await cl.get(oid)
     oid, tag, value = res
     print(f'OID: {oid}\nTAG: {tag}\nVALUE: {value}')
+
+    # GETNEXT
+    res = await cl.get_next(oid)
+    oid, tag, value = res
+    print(f'OID: {oid}\nTAG: {tag}\nVALUE: {value}')
+
+    # GETBULK
+    varbinds = await cl.get_bulk(oid, max_repetitions=20)
+    for oid, tag, value in varbinds:
+        print(f'OID: {oid} | TAG: {tag} | VALUE: {value}')
+
+    # walk an OID tree
+    varbinds = await cl.walk(oid)
+    for oid, tag, value in varbinds:
+        print(f'OID: {oid} | TAG: {tag} | VALUE: {value}')
 
     cl.close()
 
@@ -55,6 +72,8 @@ async def main():
 
     cl = SnmpV3(host, username=username, auth=auth, priv=priv)
     await cl.connect()
+
+    # GET
     res = await cl.get(oid)
     oid, tag, value = res
     print(f'OID: {oid}\nTAG: {tag}\nVALUE: {value}')
