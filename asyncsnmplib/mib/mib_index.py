@@ -1,9 +1,10 @@
+from typing import Any
 import json
 import os
 from .mib import on_mib
 from .tc import MIB_TEXTUAL_CONVENTIONS
 
-MIB_INDEX = {}
+MIB_INDEX: dict[Any, Any] = {}
 MIB_JSON_FOLDER = 'mibs/parsed/'
 
 

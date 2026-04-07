@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from typing import Iterable, Optional, Type
 from .exceptions import (
     SnmpNoConnection,
@@ -56,7 +55,7 @@ class Snmp:
         self._protocol = protocol
         self._transport = transport
 
-    def _get(self, oids, timeout=None):
+    def _get(self, oids: Iterable[TOid], timeout: Optional[float] = None):
         if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGet(variable_bindings=oids)
@@ -66,14 +65,14 @@ class Snmp:
         else:
             return self._protocol.send(message)
 
-    def _get_next(self, oids):
+    def _get_next(self, oids: Iterable[TOid]):
         if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGetNext(variable_bindings=oids)
         message = SnmpMessage.make(self.version, self.community, pdu)
         return self._protocol.send(message)
 
-    def _get_bulk(self, oids, max_repetitions=20):
+    def _get_bulk(self, oids: Iterable[TOid], max_repetitions: int = 20):
         if self._protocol is None:
             raise SnmpNoConnection
         pdu = SnmpGetBulk(variable_bindings=oids,
@@ -95,11 +94,16 @@ class Snmp:
         vbs, _ = await self._get_next(oids)
         return [(oid, value) for oid, _, value in vbs if oid[:-1] in oids]
 
-    async def walk(self, oid: TOid, is_table: bool,
+    async def get_bulk(self, oid: TOid, max_repetitions: int = 20
+                       ) -> list[tuple[TOid, Tag, TValue]]:
+        vbs, _ = await self._get_bulk([oid], max_repetitions)
+        return vbs
+
+    async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
-        next_oid = oid
+        next_oid: TOid = oid
         prefixlen = len(oid)
-        rows = []
+        rows: list[tuple[TOid, TValue]] = []
 
         prev_size = 0
         max_r = 10
@@ -140,11 +144,14 @@ class Snmp:
 class SnmpV1(Snmp):
     version = 0
 
-    async def walk(self, oid: TOid, is_table: bool,
+    async def get_bulk(self, oid: TOid, max_repetitions: int = 20):
+        raise Exception('GETBULK not available for SNMP v1')
+
+    async def walk(self, oid: TOid, is_table: bool = False,
                    ) -> list[tuple[TOid, TValue]]:
-        next_oid = oid
+        next_oid: TOid = oid
         prefixlen = len(oid)
-        rows = []
+        rows: list[tuple[TOid, TValue]] = []
 
         while True:
             try:
@@ -243,7 +250,9 @@ class SnmpV3(Snmp):
 
         return params
 
-    async def _get(self, oids, timeout=None):
+    async def _get(self, oids: Iterable[TOid],
+                   timeout: Optional[float] = None
+                   ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         if self._protocol is None:
             raise SnmpNoConnection
         params, is_new = await self._cache.get_params(self.get_auth_params)
@@ -286,7 +295,8 @@ class SnmpV3(Snmp):
         else:
             return res
 
-    async def _get_next(self, oids):
+    async def _get_next(self, oids: Iterable[TOid]
+                        ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         if self._protocol is None:
             raise SnmpNoConnection
         params, is_new = await self._cache.get_params(self.get_auth_params)
@@ -312,7 +322,8 @@ class SnmpV3(Snmp):
         else:
             return res
 
-    async def _get_bulk(self, oids, max_repetitions=20):
+    async def _get_bulk(self, oids: Iterable[TOid], max_repetitions: int = 20
+                        ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         if self._protocol is None:
             raise SnmpNoConnection
         params, is_new = await self._cache.get_params(self.get_auth_params)

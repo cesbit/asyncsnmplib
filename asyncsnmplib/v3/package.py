@@ -1,9 +1,12 @@
+from typing import Any, Type
 from Crypto.Util.asn1 import DerSequence, DerOctetString, DerObject
-from ..asn1 import Decoder
+from ..asn1 import Decoder, Tag, TOid, TValue
+from .auth import Auth
+from .encr import Priv
 from .usm import UsmSecurityParameters
 
 
-def _decode_scopedpdu(decoder):
+def _decode_scopedpdu(decoder: Decoder) -> list[Any]:
     with decoder.enter():
         _, contextengineid = decoder.read()
         _, contextname = decoder.read()
@@ -16,7 +19,7 @@ def _decode_scopedpdu(decoder):
             _, error_index = decoder.read()
 
             with decoder.enter():
-                variable_bindings = []
+                variable_bindings = list[tuple[TOid, Tag, TValue]]()
                 while not decoder.eof():
                     with decoder.enter():
                         _, oid = decoder.read()
@@ -35,7 +38,7 @@ def _decode_scopedpdu(decoder):
     ]
 
 
-def _encode_msgsecurityparameters(orig):
+def _encode_msgsecurityparameters(orig: UsmSecurityParameters):
     encoder = DerSequence([
         DerOctetString(orig[0]),
         orig[1],
@@ -47,7 +50,7 @@ def _encode_msgsecurityparameters(orig):
     return encoder.encode()
 
 
-def _decode_msgsecurityparameters(data):
+def _decode_msgsecurityparameters(data: bytes):
     decoder = Decoder(data)
     with decoder.enter():
         _, authoritative_engine_id = decoder.read()
@@ -73,8 +76,8 @@ class Package:
     msgmaxsize: int
     msgflags: bytes
     msgsecuritymodel: int
-    msgsecurityparameters: UsmSecurityParameters
-    msgdata: list
+    msgsecurityparameters: Any  # UsmSecurityParameters | list
+    msgdata: list[Any]
     pdu: DerObject
 
     def encode(self):
@@ -92,7 +95,7 @@ class Package:
         ])
         return encoder.encode()
 
-    def decode(self, data):
+    def decode(self, data: bytes):
         decoder = Decoder(data)
         with decoder.enter():
             _, version = decoder.read()
@@ -119,7 +122,7 @@ class Package:
         self.msgsecurityparameters = params
         self.msgdata = msgdata
 
-    def encrypt(self, proto, key):
+    def encrypt(self, proto: Type[Priv], key: bytes):
         encoded = self.pdu.encode()
         try:
             encryped = proto.encrypt(key, encoded, self.msgsecurityparameters)
@@ -127,7 +130,7 @@ class Package:
             raise Exception(f'failed to encrypt pdu: {e}')
         self.pdu = DerOctetString(encryped)
 
-    def decrypt(self, proto, key):
+    def decrypt(self, proto: Type[Priv], key: bytes):
         try:
             pdu = proto.decrypt(key, self.msgdata, self.msgsecurityparameters)
         except Exception as e:
@@ -135,13 +138,13 @@ class Package:
         decoder = Decoder(pdu)
         self.msgdata = _decode_scopedpdu(decoder)
 
-    def encode_auth(self, proto, key):
-        self.msgsecurityparameters[4] = b'\x00' * proto.sz  # type: ignore
+    def encode_auth(self, proto: Type[Auth], key: bytes):
+        self.msgsecurityparameters[4] = b'\x00' * proto.sz
         encoded = self.encode()
         auth_key = proto.auth(key, encoded)
 
         # set auth_key
-        self.msgsecurityparameters[4] = auth_key[:proto.sz]  # type: ignore
+        self.msgsecurityparameters[4] = auth_key[:proto.sz]
 
         # encode again with the auth_key
         encoded = self.encode()
@@ -151,7 +154,7 @@ class Package:
 class SnmpV3Message(Package):
 
     @classmethod
-    def make(cls, pdu, msgsecurityparameters):
+    def make(cls, pdu: Any, msgsecurityparameters: Any):
         pkg = cls()
         pkg.version = 3
         pkg.msgflags = b'\x00'

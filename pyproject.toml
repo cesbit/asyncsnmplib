@@ -1,6 +1,10 @@
 [tool.pyright]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 pythonPlatform = "Linux"
 include = [
     "asyncsnmplib"
 ]
+typeCheckingMode = "strict"
+
+reportPrivateUsage = "none"
+reportUnnecessaryComparison = "none"

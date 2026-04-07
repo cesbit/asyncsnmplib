@@ -27,7 +27,7 @@ class Package:
         ])
         return encoder.encode()
 
-    def decode(self, data):
+    def decode(self, data: bytes):
         decoder = Decoder(data)
         with decoder.enter():
             decoder.read()  # version
@@ -50,7 +50,7 @@ class SnmpMessage(Package):
     request_id: Optional[int] = None
 
     @classmethod
-    def make(cls, version, community, pdu):
+    def make(cls, version: int, community: bytes, pdu: PDU):
         pkg = cls()
         pkg.version = version
         pkg.community = community

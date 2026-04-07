@@ -1,9 +1,12 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Optional, Type
+from ..asn1 import Tag, TOid, TValue
 from ..exceptions import SnmpTimeoutError, SnmpAuthV3Exception
 from ..protocol import SnmpProtocol, _ERROR_STATUS_TO_EXCEPTION
-from .package import Package
+from .auth import Auth
+from .encr import Priv
+from .package import Package, SnmpV3Message
 
 _RESPONSE_PDU_ID = 2
 _REPORT_PDU_ID = 8
@@ -44,19 +47,24 @@ class SnmpV3Protocol(SnmpProtocol):
     def get_params(self):
         return self._params
 
-    async def _send_encrypted(
-            self, pkg, auth_proto, auth_key, priv_proto, priv_key, timeout=10):
+    async def _send_encrypted(self, pkg: SnmpV3Message,
+                              auth_proto: Optional[Type[Auth]],
+                              auth_key: Optional[bytes],
+                              priv_proto: Optional[Type[Priv]],
+                              priv_key: Optional[bytes],
+                              timeout: Optional[float] = 10.0
+                              ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         self._request_id += 1
         self._request_id %= 0x10000
 
         pkg.request_id = pid = self._request_id
         if priv_proto:
             pkg.msgflags = b'\x03'
-            pkg.encrypt(priv_proto, priv_key)
-            msg = pkg.encode_auth(auth_proto, auth_key)
+            pkg.encrypt(priv_proto, priv_key)  # type: ignore
+            msg = pkg.encode_auth(auth_proto, auth_key)  # type: ignore
         elif auth_proto:
             pkg.msgflags = b'\x01'
-            msg = pkg.encode_auth(auth_proto, auth_key)
+            msg = pkg.encode_auth(auth_proto, auth_key)  # type: ignore
         else:
             pkg.msgflags = b'\x00'
             msg = pkg.encode()
@@ -107,8 +115,12 @@ class SnmpV3Protocol(SnmpProtocol):
 
         return vbs, size
 
-    async def send_encrypted(self, pkg, auth_proto, auth_key, priv_proto,
-                             priv_key):
+    async def send_encrypted(self, pkg: SnmpV3Message,
+                             auth_proto: Optional[Type[Auth]],
+                             auth_key: Optional[bytes],
+                             priv_proto: Optional[Type[Priv]],
+                             priv_key: Optional[bytes]
+                             ) -> tuple[list[tuple[TOid, Tag, TValue]], int]:
         for timeout in self._timeouts:
             try:
                 res = await self._send_encrypted(

@@ -3,10 +3,10 @@ from ..exceptions import SnmpDecryptionError
 from Crypto.Cipher import DES, AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad
-from typing import Callable, Type
+from typing import Callable, Type, Any
 
 
-def encrypt_data(key, data, msgsecurityparams):
+def encrypt_data(key: bytes, data: bytes, msgsecurityparams: list[Any]):
     # engine_boots = msgsecurityparams[1]
     # rand_ = random.randrange(0, 0xFFFFFFFF)
 
@@ -26,11 +26,11 @@ def encrypt_data(key, data, msgsecurityparams):
     des_key = key[:8]
     iv = struct.pack('B' * 8, *map(lambda x, y: x ^ y, salt, key[8:16]))
 
-    obj = DES.new(des_key, DES.MODE_CBC, iv)
+    obj = DES.new(des_key, DES.MODE_CBC, iv)  # type: ignore
     return obj.encrypt(pad(data, 8))
 
 
-def decrypt_data(key, data, msgsecurityparams):
+def decrypt_data(key: bytes, data: bytes, msgsecurityparams: list[Any]):
     salt = msgsecurityparams[5]
 
     if len(salt) != 8:
@@ -42,11 +42,11 @@ def decrypt_data(key, data, msgsecurityparams):
     if len(data) % 8 != 0:
         raise SnmpDecryptionError
 
-    obj = DES.new(des_key, DES.MODE_CBC, iv)
+    obj = DES.new(des_key, DES.MODE_CBC, iv)  # type: ignore
     return obj.decrypt(data)
 
 
-def _get_pre_iv(engine_boots, engine_time):
+def _get_pre_iv(engine_boots: int, engine_time: int):
     return struct.pack(
         'B' * 8,
         engine_boots >> 24 & 0xff,
@@ -60,23 +60,24 @@ def _get_pre_iv(engine_boots, engine_time):
     )
 
 
-def encrypt_data_aes(key, data, msgsecurityparams):
+def encrypt_data_aes(key: bytes, data: bytes, msgsecurityparams: list[Any]):
     msgsecurityparams[5] = salt = get_random_bytes(8)
     pre_iv = _get_pre_iv(msgsecurityparams[1], msgsecurityparams[2])
-    obj = AES.new(key[:16], AES.MODE_CFB, pre_iv + salt, segment_size=128)
+    iv = pre_iv + salt
+    obj = AES.new(key[:16], AES.MODE_CFB, iv, segment_size=128)  # type: ignore
     return obj.encrypt(pad(data, 16))
 
 
-def decrypt_data_aes(key, data, msgsecurityparams):
+def decrypt_data_aes(key: bytes, data: bytes, msgsecurityparams: list[Any]):
     pre_iv = _get_pre_iv(msgsecurityparams[1], msgsecurityparams[2])
     iv = pre_iv + msgsecurityparams[5]
-    obj = AES.new(key[:16], AES.MODE_CFB, iv, segment_size=128)
+    obj = AES.new(key[:16], AES.MODE_CFB, iv, segment_size=128)  # type: ignore
     return obj.decrypt(pad(data, 16))
 
 
 class Priv:
-    encrypt: Callable
-    decrypt: Callable
+    encrypt: Callable[[bytes, bytes, Any], bytes]
+    decrypt: Callable[[bytes, Any, Any], bytes]
 
 
 class USM_PRIV_CBC56_DES(Priv):

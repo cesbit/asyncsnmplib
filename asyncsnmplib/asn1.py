@@ -75,7 +75,7 @@ class Decoder:
     __slots__ = ("m_stack", "m_tag")
 
     def __init__(self, data: bytes) -> None:
-        self.m_stack: list[list] = [[0, data]]
+        self.m_stack: list[list[Any]] = [[0, data]]
         self.m_tag: Optional[Tag] = None
 
     def peek(self) -> Tag:
